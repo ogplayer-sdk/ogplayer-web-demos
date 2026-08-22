@@ -1,0 +1,13 @@
+{
+  "name": "ogplayer-web-demos",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Integration demos for the OGPlayer web SDK",
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "dependencies": {
+    "ogplayer": "^1.0.1"
+  }
+}

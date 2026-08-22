@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Playlist &amp; up next — OGPlayer</title>
+<link rel="stylesheet" href="./assets/demo.css">
+</head>
+<body>
+<div class="wrap">
+  <og-player id="pl"></og-player>
+  <div class="chips" id="mode" style="margin-top:14px">
+    <button class="chip on" data-mode="default">Default</button>
+    <button class="chip" data-mode="lead">Lead 5s</button>
+    <button class="chip" data-mode="text">Custom text</button>
+    <button class="chip" data-mode="branded">Branded style</button>
+    <button class="chip" data-mode="hidden">Hidden</button>
+    <button class="chip" data-mode="ads">With ads</button>
+  </div>
+  <p class="note" id="note"></p>
+  <div class="log" id="log"></div>
+  <footer class="demo" id="foot"></footer>
+</div>
+<script type="importmap">{ "imports": { "ogplayer": "./node_modules/ogplayer/dist/ogplayer.js" } }</script>
+<script type="module">
+import { OGPlayer, ImaAdsProvider } from "ogplayer";
+import { pageHeader, makeLog, attachAdEventLogging, FOOTER } from "./assets/demo.js";
+
+pageHeader("Playlist & up next",
+  "Queue clips that auto-advance, with a themeable countdown card.");
+document.getElementById("foot").textContent = FOOTER;
+
+const player = new OGPlayer();
+player.adsProvider = new ImaAdsProvider();
+const el = document.getElementById("pl");
+el.player = player;
+const log = makeLog(document.getElementById("log"));
+attachAdEventLogging(player, log);
+
+// Playlist demo: just the queue lifecycle — no analytics noise.
+player.addListener({
+  onPlaylistItemChanged: (index, item) =>
+    log(`onPlaylistItemChanged: #${index} · ${item.title}`),
+  onPlaylistItemSkipped: (fromIndex, toIndex) =>
+    log(`onPlaylistItemSkipped: #${fromIndex} → #${toIndex}`),
+  onPlaybackCompleted: () => log("onPlaybackCompleted"),
+  onError: (error) => log(`onError: ${error.code} ${error.message}`),
+});
+
+// Google's public IMA sample tags — a skippable preroll (VAST) and a
+// postroll-only ad rule (VMAP).
+const SKIPPABLE_PREROLL =
+  "https://pubads.g.doubleclick.net/gampad/ads?iu=/21775744923/external/" +
+  "single_preroll_skippable&sz=640x480&ciu_szs=300x250%2C728x90&gdfp_req=1" +
+  "&output=vast&unviewed_position_start=1&env=vp&impl=s&correlator=";
+const POSTROLL_ONLY =
+  "https://pubads.g.doubleclick.net/gampad/ads?iu=/21775744923/external/vmap_ad_samples" +
+  "&sz=640x480&ciu_szs=300x250%2C728x90&gdfp_req=1&ad_rule=1&output=vmap" +
+  "&unviewed_position_start=1&env=vp&impl=s&cmsid=496&vid=short_onecue" +
+  "&cust_params=sample_ar%3Dpostonly&correlator=";
+
+// Ads are PER ITEM: with ads on, clip 1 opens with a skippable preroll,
+// clip 2 ends with a postroll (played BEFORE the queue advances), clip 3
+// stays ad-free.
+const clips = (withAds) => [
+  ["w169-01", "The old church", SKIPPABLE_PREROLL],
+  ["w169-02", "Crossing the bridge", POSTROLL_ONLY],
+  ["w169-03", "The machine waits", null],
+].map(([file, title, adTag]) => ({
+  url: `https://media.ogplayer.tv/shorts/v3/${file}.mp4`,
+  streamType: "VOD",
+  title,
+  posterUrl: `https://media.ogplayer.tv/shorts/v3/${file}.jpg`,
+  ...(withAds && adTag ? { adBreaks: { adTagUri: adTag } } : {}),
+}));
+
+const NOTES = {
+  default: "Three 14-second clips auto-advance; the “Up next” card counts " +
+    "down during the last 10 seconds — click it to skip immediately. " +
+    "Changing modes reloads the playlist.",
+  lead: "upNextLeadSeconds: 5 — the card appears 5 seconds before the end " +
+    "instead of the default 10.",
+  text: "upNextText: “{title} starts in {seconds}s…” — your copy, any " +
+    "language; {seconds} and {title} are substituted.",
+  branded: "upNextStyle — brand the card with inline CSS: accent background, " +
+    "serif font, dark text.",
+  hidden: "showUpNext: false — no card at all; the playlist still " +
+    "auto-advances silently.",
+  ads: "Ads are per item (adBreaks on each media item): clip 1 opens with " +
+    "a skippable preroll, clip 2 ends with a postroll that plays before " +
+    "the queue advances, clip 3 is ad-free.",
+};
+
+let mode = "default";
+function applyConfig() {
+  el.config = {
+    ...(mode === "lead" ? { upNextLeadSeconds: 5 } : {}),
+    ...(mode === "text" ? { upNextText: "{title} starts in {seconds}s…" } : {}),
+    ...(mode === "branded" ? {
+      upNextText: "Up next · {title} · {seconds}",
+      upNextStyle: "background:rgba(246,196,69,.9);color:#131313;" +
+        "font-family:Georgia,serif",
+    } : {}),
+    ...(mode === "hidden" ? { showUpNext: false } : {}),
+  };
+  document.getElementById("note").textContent = NOTES[mode];
+}
+
+function reload() {
+  log(mode === "ads"
+    ? "— loading playlist with per-item IMA tags —"
+    : "— loading playlist (3 clips, 14s each) —");
+  player.loadPlaylist(clips(mode === "ads"));
+}
+
+document.querySelectorAll("#mode .chip[data-mode]").forEach((b) => {
+  b.addEventListener("click", () => {
+    document.querySelectorAll("#mode .chip[data-mode]").forEach((c) => c.classList.remove("on"));
+    b.classList.add("on");
+    mode = b.dataset.mode;
+    applyConfig();
+    reload();
+  });
+});
+
+applyConfig();
+reload();
+</script>
+</body>
+</html>

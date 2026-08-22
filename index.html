@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OGPlayer web demos</title>
+<link rel="stylesheet" href="./assets/demo.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="demo">
+    <a href="https://ogplayer.tv" title="ogplayer.tv" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit">
+      <svg width="26" height="26" viewBox="0 0 32 32"><path d="M12 3H29V20L20 29H3V12Z" fill="none" stroke="rgba(255,255,255,0.72)" stroke-width="2.6" stroke-linejoin="round"/><path d="M13 10L22.5 16L13 22Z" fill="#F6C445"/></svg>
+      <span class="brand"><span class="og">OG</span>Player</span>
+    </a>
+    <span class="sub">v1.0.1</span>
+  </header>
+  <h1 class="page">Integration demos</h1>
+  <p class="lede" id="count"></p>
+  <div id="list"></div>
+  <footer class="demo">Content: Tears of Steel — (CC) Blender Foundation · OGPlayer is a product of Inverse DOO</footer>
+</div>
+<script>
+const play = '<svg viewBox="0 0 24 24"><path d="M8.5 6.5 18 12 8.5 17.5Z" fill="currentColor"/></svg>';
+const sliders = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 7.5h5M12.2 7.5H21M8 7.5a2.1 2.1 0 1 0 4.2 0 2.1 2.1 0 1 0-4.2 0ZM3 16.5h8.8M16 16.5H21M11.8 16.5a2.1 2.1 0 1 0 4.2 0 2.1 2.1 0 1 0-4.2 0Z"/></svg>';
+const plus = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>';
+const live = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none"/><path d="M7.7 7.7a6 6 0 0 0 0 8.6M16.3 7.7a6 6 0 0 1 0 8.6M4.9 4.9a10 10 0 0 0 0 14.2M19.1 4.9a10 10 0 0 1 0 14.2"/></svg>';
+const lock = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="5" y="10.5" width="14" height="9" rx="2"/><path d="M8 10.5V8a4 4 0 1 1 8 0v2.5"/></svg>';
+const cc = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5.5 5 18.5 5A2.5 2.5 0 0 1 21 7.5L21 16.5A2.5 2.5 0 0 1 18.5 19L5.5 19A2.5 2.5 0 0 1 3 16.5L3 7.5A2.5 2.5 0 0 1 5.5 5ZM7.5 10.5h9M7.5 14.5h5"/></svg>';
+const drop = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3.5c3.5 4.2 6 7.4 6 10.5a6 6 0 0 1-12 0c0-3.1 2.5-6.3 6-10.5Z"/></svg>';
+const shield = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3 20 6v5c0 5-3.4 8.4-8 10-4.6-1.6-8-5-8-10V6Z"/></svg>';
+const chat = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4H4c-.55 0-1 .45-1 1v15l4-4h13c.55 0 1-.45 1-1V5c0-.55-.45-1-1-1Z"/><path d="M8 9.5h8M8 13h5"/></svg>';
+
+const groups = [
+  ["PLAYBACK", [
+    ["vod.html", play, "VOD playback", "Adaptive HLS, transport, seek, fullscreen.", null, true],
+    ["watch.html", play, "Watch page (full-window)", "The player fills the browser window — the streaming watch-page layout.", null, true],
+    ["controls.html", sliders, "Controls on/off", "Default chrome, per-control hide, fully headless.", null, true],
+    ["customactions.html", plus, "Custom action icons", "Up to 8 host icons inline in the controls, with callbacks.", null, true],
+    ["startfullscreen.html", play, "Starts in fullscreen", "First tap opens fullscreen; host-intercepted exit.", null, true],
+    ["playlist.html", play, "Playlist & up next", "Queue clips that auto-advance, with a themeable countdown card.", null, true],
+    ["verticalfeed.html", play, "Vertical feed", "Swipeable portrait feed — player pool, split layouts, sponsored items, host rail.", null, true],
+    ["errormessages.html", chat, "Custom error messages", "Your copy, your language, on our stable error codes.", null, true],
+  ]],
+  ["STREAMING", [
+    ["live.html", live, "Live & DVR", "Live edge, seekable window, behind-edge state.", null, true],
+    ["streamtester.html", sliders, "Stream tester", "Paste your own manifest — your stream, our player.", "Your stream", true],
+    ["drm.html", lock, "DRM", "Widevine, PlayReady & FairPlay via EME.", "Multi-DRM", true],
+  ]],
+  ["MONETISATION", [
+    ["ads.html", play, "Ads", "Pre/mid/post-roll pods, skip, cue markers.", "IMA", true],
+    ["freewheel.html", play, "FreeWheel", "Your MRM network's schedule from FreewheelConfig, via IMA.", "FreeWheel", true],
+  ]],
+  ["TRACKS", [
+    ["subtitles.html", cc, "Subtitles & audio", "Embedded + sideloaded tracks, font size.", null, true],
+  ]],
+  ["OVERLAYS", [
+    ["watermarks.html", drop, "Watermarks", "A watermark in any of nine slots, live.", null, true],
+    ["ratings.html", shield, "Content ratings", "Age + descriptor icons at program start.", "Kijkwijzer", true],
+  ]],
+];
+const list = document.getElementById("list");
+let n = 0;
+for (const [header, rows] of groups) {
+  const g = document.createElement("div");
+  g.className = "group"; g.textContent = header;
+  list.appendChild(g);
+  for (const [href, icon, title, desc, tag, on] of rows) {
+    n += on ? 1 : 0;
+    const a = document.createElement("a");
+    a.className = "row" + (on ? "" : " off");
+    a.href = href;
+    a.innerHTML = `<span class="tile">${icon}</span>
+      <span class="rt"><span class="t">${title}${tag ? ` <span class="tag">${tag}</span>` : ""}</span>
+      <span class="d">${desc}</span></span><span class="chev">›</span>`;
+    list.appendChild(a);
+  }
+}
+document.getElementById("count").textContent =
+  "Every SDK capability, demonstrated end to end.";
+</script>
+</body>
+</html>

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ads (IMA) — OGPlayer</title>
+<link rel="stylesheet" href="./assets/demo.css">
+</head>
+<body>
+<div class="wrap">
+  <og-player id="pl"></og-player>
+  <div class="chips" id="chips"></div>
+  <p class="note">Client-side Google IMA ads. Pick a scenario to reload; every ad
+  callback streams below. IMA renders its own skip / clickthrough UI; the SDK draws
+  the yellow bar, AD chip with pod position, countdown and cue markers on the
+  scrubber. (An ad blocker will block
+  the IMA SDK — disable it for this page.)</p>
+  <div class="log" id="log"></div>
+  <footer class="demo">Google IMA sample ad tags · OGPlayer is a product of Inverse DOO</footer>
+</div><script type="importmap">{ "imports": { "ogplayer": "./node_modules/ogplayer/dist/ogplayer.js" } }</script>
+<script type="module">
+import { OGPlayer, ImaAdsProvider, OGPLAYER_BUILD } from "ogplayer";
+import { pageHeader, makeLog, attachEventLogging, attachAdEventLogging } from "./assets/demo.js";
+
+pageHeader("Ads (IMA)", "Client-side Google IMA: pre/mid/post-roll pods, skip, clickthrough and cue markers.");
+
+// Short (~60s) clip so the VMAP sample's mid/post cue points land sensibly.
+const CONTENT = "https://media.ogplayer.tv/tos-clip-60s.mp4";
+const VMAP = "https://pubads.g.doubleclick.net/gampad/ads?iu=/21775744923/external/vmap_ad_samples"
+  + "&sz=640x480&ciu_szs=300x250%2C728x90&gdfp_req=1&ad_rule=1&output=vmap"
+  + "&unviewed_position_start=1&env=vp&impl=s&cmsid=496&vid=short_onecue&correlator=";
+const scenarios = {
+  "Skippable preroll": "https://pubads.g.doubleclick.net/gampad/ads?iu=/21775744923/external/"
+    + "single_preroll_skippable&sz=640x480&ciu_szs=300x250%2C728x90&gdfp_req=1"
+    + "&output=vast&unviewed_position_start=1&env=vp&impl=s&correlator=",
+  "Pre + mid + post": VMAP + "&cust_params=sample_ar%3Dpremidpost",
+  "Mid-roll pod (3 ads)": VMAP + "&cust_params=sample_ar%3Dpremidpostpod",
+  "Long pod (5 ads)": VMAP + "&cust_params=sample_ar%3Dpremidpostlongpod",
+  "Broken tag (error)": "https://pubads.g.doubleclick.net/gampad/ads?iu=/21775744923/external/"
+    + "does_not_exist&sz=640x480&gdfp_req=1&output=vast&env=vp&impl=s&correlator=",
+};
+
+const player = new OGPlayer();
+player.adsProvider = new ImaAdsProvider();
+const el = document.getElementById("pl");
+el.player = player;
+// Hard broadcaster policy: no ads, no content.
+el.config = { adBlockerPolicy: "block" };
+const log = makeLog(document.getElementById("log"));
+attachEventLogging(player, log);
+attachAdEventLogging(player, log);
+
+const chips = document.getElementById("chips");
+function run(label, tag, chipEl) {
+  [...chips.children].forEach((c) => c.classList.remove("on"));
+  chipEl?.classList.add("on");
+  log(`— loading ${label} —`);
+  player.load({ url: CONTENT, title: `Ads demo — ${label}`, adBreaks: { adTagUri: tag } });
+  // No gesture on auto-start: fall back to muted autoplay (always allowed);
+  // unmute from the volume control.
+  setTimeout(() => {
+    if (!player.isPlaying && !player.isPlayingAd && !player.adsPending && !player.holdPlayback) {
+      player.isMuted = true;
+      player.play();
+    }
+  }, 1200);
+}
+Object.entries(scenarios).forEach(([label, tag], i) => {
+  const b = document.createElement("button");
+  b.className = "chip" + (i === 0 ? " on" : "");
+  b.textContent = label;
+  b.addEventListener("click", () => run(label, tag, b));
+  chips.appendChild(b);
+});
+log(`sdk bundle built: ${OGPLAYER_BUILD}`);
+run("Skippable preroll", Object.values(scenarios)[0], chips.children[0]);
+</script>
+</body>
+</html>

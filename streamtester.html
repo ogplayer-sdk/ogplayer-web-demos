@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stream tester — OGPlayer</title>
+<link rel="stylesheet" href="./assets/demo.css">
+<style>
+  .inputrow { display:flex; gap:10px; margin-top:14px; }
+  .inputrow input { flex:1; background:#17181A; border:1px solid rgba(255,255,255,.18);
+    border-radius:8px; color:#F2F0EA; font-size:14px; padding:10px 12px; outline:none; }
+  .inputrow input:focus { border-color:rgba(246,196,69,.6); }
+  details.drm { margin-top:10px; }
+  details.drm summary { cursor:pointer; color:rgba(255,255,255,.55); font-size:13px;
+    user-select:none; }
+  details.drm summary:hover { color:#F6C445; }
+  details.drm .inputrow { margin-top:10px; }
+  details.drm label { display:block; margin-top:10px; font-size:12px;
+    color:rgba(255,255,255,.45); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <og-player id="pl"></og-player>
+  <div class="inputrow">
+    <input id="url" type="url" value=""
+      placeholder="Paste your stream URL — HLS (.m3u8) or progressive MP4/WebM"
+      aria-label="Stream URL">
+    <button class="chip on" id="play">Play</button>
+  </div>
+  <details class="drm">
+    <summary>Stream needs DRM? Add license servers (optional)</summary>
+    <label for="wv">Widevine license URL (Chrome, Firefox, Edge, Android)</label>
+    <div class="inputrow"><input id="wv" type="url" placeholder="https://…/AcquireLicense"></div>
+    <label for="fp">FairPlay license URL + certificate URL (Safari)</label>
+    <div class="inputrow">
+      <input id="fp" type="url" placeholder="license URL">
+      <input id="fpcert" type="url" placeholder="certificate URL">
+    </div>
+  </details>
+  <p class="note">Your stream, our player. Everything the SDK does — ABR with the quality
+  menu, embedded subtitles and audio tracks, live &amp; DVR detection, precise error
+  reporting — running against <em>your</em> content. Nothing is uploaded: the stream plays
+  directly from your origin/CDN in your browser. If your CDN enforces CORS, allow this
+  origin. Every callback streams below — errors arrive with the same stable codes you'd
+  handle in production.</p>
+  <div class="log" id="log"></div>
+  <footer class="demo" id="foot"></footer>
+</div><script type="importmap">{ "imports": { "ogplayer": "./node_modules/ogplayer/dist/ogplayer.js" } }</script>
+<script type="module">
+import { OGPlayer } from "ogplayer";
+import { pageHeader, makeLog, attachEventLogging, TOS, FOOTER } from "./assets/demo.js";
+
+pageHeader("Stream tester", "Paste your own manifest and watch it play — the fastest way to evaluate OGPlayer against your real content.");
+document.getElementById("foot").textContent = FOOTER;
+
+const player = new OGPlayer();
+document.getElementById("pl").player = player;
+const log = makeLog(document.getElementById("log"));
+attachEventLogging(player, log);
+
+const $ = (id) => document.getElementById(id);
+
+function play() {
+  const url = $("url").value.trim();
+  if (!url) { $("url").value = TOS; return play(); } // empty → sample stream
+  const drm = {};
+  if ($("wv").value.trim()) drm.widevine = { licenseUrl: $("wv").value.trim() };
+  if ($("fp").value.trim() && $("fpcert").value.trim())
+    drm.fairplay = { licenseUrl: $("fp").value.trim(), certificateUrl: $("fpcert").value.trim() };
+  const item = { url, title: "Your stream" };
+  if (Object.keys(drm).length) item.drm = drm;
+  log(`— loading ${url} —`);
+  player.load(item);
+}
+
+$("play").addEventListener("click", play);
+$("url").addEventListener("keydown", (e) => { if (e.key === "Enter") play(); });
+</script>
+</body>
+</html>

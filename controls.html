@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Controls on/off — OGPlayer</title>
+<link rel="stylesheet" href="./assets/demo.css">
+<style>
+  .toggles { display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr));
+    gap:4px 16px; margin-top:14px; }
+  .toggles label.cb { margin:0; font-size:14px; }
+  .master { margin-top:12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <og-player id="pl"></og-player>
+  <div class="toggles" id="toggles"></div>
+  <div class="master">
+    <button class="chip" id="all">Hide all (headless)</button>
+    <button class="chip" id="livetoggle">Live content</button>
+  </div>
+  <p class="note">Flip a switch — the running player updates instantly (OGUIConfig is
+  state; no reload). Play/pause and the LIVE chip are always visible by SDK design.
+  "Live content" reloads to a live stream: the live-inapplicable controls (speed;
+  scrub/seek/time on pure live) drop out on top of your switches.</p>
+  <div class="log" id="log"></div>
+  <footer class="demo" id="foot"></footer>
+</div><script type="importmap">{ "imports": { "ogplayer": "./node_modules/ogplayer/dist/ogplayer.js" } }</script>
+<script type="module">
+import { OGPlayer, hidingAllControls } from "ogplayer";
+import { pageHeader, makeLog, attachEventLogging, TOS, FOOTER } from "./assets/demo.js";
+
+pageHeader("Controls on/off", "Per-control visibility, each flag toggled separately — the OGUIConfig show* switches.");
+document.getElementById("foot").textContent = FOOTER;
+
+const player = new OGPlayer();
+const el = document.getElementById("pl");
+el.player = player;
+const log = makeLog(document.getElementById("log"));
+attachEventLogging(player, log);
+
+const FLAGS = [
+  ["showProgressBar", "Progress bar"],
+  ["showTimeLabels", "Time labels"],
+  ["showSeekButtons", "Seek ±10s buttons"],
+  ["showVolumeButton", "Volume"],
+  ["showSpeedButton", "Speed"],
+  ["showQualityButton", "Quality"],
+  ["showAudioTrackButton", "Audio tracks"],
+  ["showSubtitleButton", "Subtitles"],
+  ["showFullscreenButton", "Fullscreen"],
+  ["showTitle", "Title overlay"],
+];
+const state = Object.fromEntries(FLAGS.map(([k]) => [k, true]));
+
+function apply() { el.config = { ...state }; }
+const host = document.getElementById("toggles");
+const inputs = {};
+FLAGS.forEach(([key, label]) => {
+  const l = document.createElement("label");
+  l.className = "cb";
+  l.innerHTML = `<input type="checkbox" checked><span>${label}</span>`;
+  const input = l.querySelector("input");
+  inputs[key] = input;
+  input.addEventListener("change", () => {
+    state[key] = input.checked;
+    apply();
+    log(`${key} → ${input.checked}`);
+  });
+  host.appendChild(l);
+});
+document.getElementById("all").addEventListener("click", () => {
+  const anyOn = Object.values(state).some(Boolean);
+  if (anyOn) Object.assign(state, hidingAllControls({ showTitle: state.showTitle }));
+  else FLAGS.forEach(([k]) => { state[k] = true; });
+  FLAGS.forEach(([k]) => { inputs[k].checked = state[k]; });
+  apply();
+  log(anyOn ? "config → hidingAllControls() (headless)" : "config → all controls on");
+});
+
+const LIVE_URL = "https://demo.unified-streaming.com/k8s/live/stable/live.isml/.m3u8";
+let liveContent = false;
+function loadCurrent() {
+  log(liveContent ? "— loading live —" : "— loading VOD —");
+  player.load(liveContent
+    ? { url: LIVE_URL, title: "Controls demo — live", streamType: "LIVE_DVR" }
+    : { url: TOS, title: "Controls demo" });
+  apply(); // config survives the reload
+}
+document.getElementById("livetoggle").addEventListener("click", (e) => {
+  liveContent = !liveContent;
+  e.target.classList.toggle("on", liveContent);
+  loadCurrent();
+});
+loadCurrent();
+</script>
+</body>
+</html>
