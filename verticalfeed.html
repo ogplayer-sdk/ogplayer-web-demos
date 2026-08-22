@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vertical feed — OGPlayer</title>
+<link rel="stylesheet" href="./assets/demo.css">
+<style>
+  /* Phone-shaped stage: the feed is a portrait surface; on desktop we frame
+     it like a device, on small screens it fills the viewport. */
+  .stage { display:flex; justify-content:center; }
+  .phone { position:relative; width:100%; height:min(86vh, 960px);
+    background:#000; border-radius:14px; overflow:hidden;
+    border:1px solid #23252b; display:flex; flex-direction:column; }
+  .abar { display:flex; align-items:center; justify-content:space-between;
+    padding:0 16px; height:48px; background:#0E0E10; flex:0 0 48px;
+    border-bottom:1px solid #1a1c22; }
+  .abar b { color:#fff; font-size:15px; }
+  .abar .backbtn { color:rgba(255,255,255,.7); margin-right:10px; font-weight:600; }
+  .abar button { background:none; border:0; color:#F6C445; font:600 13px/1 inherit;
+    cursor:pointer; }
+  og-vertical-feed { flex:1 1 0; min-height:0; }
+  /* Chooser */
+  .modes { display:none; flex-direction:column; gap:10px; padding:16px;
+    overflow-y:auto; }
+  .phone.choosing .modes { display:flex; }
+  .phone.choosing og-vertical-feed, .phone.choosing .abar { display:none; }
+  .modes h2 { color:#fff; font-size:20px; margin:4px 0 0; }
+  .modes .lede { color:rgba(255,255,255,.6); font-size:13px; margin-bottom:4px; }
+  .modes .grp { color:#F6C445; font-size:11px; font-weight:700;
+    letter-spacing:.08em; margin-top:10px; }
+  .modes button.mode { text-align:left; background:#17181d; border:0;
+    border-radius:12px; padding:14px 16px; cursor:pointer; }
+  .modes button.mode h3 { color:#F6C445; font-size:15px; margin:0 0 6px; }
+  .modes button.mode p { color:rgba(255,255,255,.72); font-size:12.5px;
+    margin:0; line-height:1.45; }
+  /* Analytics panel */
+  .apanel { position:absolute; inset:auto 0 0 0; max-height:60%;
+    background:#101116; border-top:1px solid #23252b; z-index:30;
+    display:none; flex-direction:column; border-radius:12px 12px 0 0; }
+  .apanel.open { display:flex; }
+  .apanel header { display:flex; justify-content:space-between; align-items:center;
+    padding:10px 16px; color:#fff; font-size:13px; font-weight:600; }
+  .apanel header button { background:none; border:0; color:#F6C445; cursor:pointer; }
+  .apanel .log { margin:0 10px 10px; flex:1 1 0; }
+  /* Toast (Android-parity feedback for rail taps) */
+  .toast { position:absolute; left:50%; bottom:24px; transform:translateX(-50%);
+    background:#26272d; color:#fff; font-size:13px; padding:10px 16px;
+    border-radius:999px; z-index:40; opacity:0; transition:opacity .2s; }
+  .toast.show { opacity:1; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="stage">
+    <div class="phone choosing" id="phone">
+      <div class="modes" id="modes">
+        <h2>Vertical feed</h2>
+        <div class="lede">One component, six ways to ship it. Pick a mode:</div>
+      </div>
+      <div class="abar">
+        <span><button id="back" class="backbtn">‹ Modes</button>
+        <b id="mtitle">Vertical feed</b></span>
+        <button id="abtn">Analytics (0)</button>
+      </div>
+      <og-vertical-feed id="feed"></og-vertical-feed>
+      <div class="apanel" id="apanel">
+        <header>Feed analytics — this session <button id="aclose">Close</button></header>
+        <div class="log" id="alog"></div>
+      </div>
+      <div class="toast" id="toast"></div>
+    </div>
+  </div>
+  <p class="note">A swipeable portrait video feed on the OGPlayer engine —
+  <code>&lt;og-vertical-feed&gt;</code> with an internal pool of at most three
+  players: neighbours preload muted on capped buffers, swipes start instantly.
+  Same API names as the Android and iOS SDKs.</p>
+  <footer class="demo" id="foot"></footer>
+</div>
+<script type="importmap">{ "imports": { "ogplayer": "./node_modules/ogplayer/dist/ogplayer.js" } }</script>
+<script type="module">
+import "ogplayer";
+import { pageHeader, makeLog, FOOTER } from "./assets/demo.js";
+
+pageHeader("Vertical feed", "Portrait feed component — player pool, split layouts, sponsored items, host rail, feed analytics.");
+document.getElementById("foot").textContent = FOOTER;
+
+const BASE = "https://media.ogplayer.tv/shorts/v3";
+const phone = document.getElementById("phone");
+const feed = document.getElementById("feed");
+const modesEl = document.getElementById("modes");
+const mtitle = document.getElementById("mtitle");
+const abtn = document.getElementById("abtn");
+const apanel = document.getElementById("apanel");
+const alog = makeLog(document.getElementById("alog"));
+const toastEl = document.getElementById("toast");
+
+let analyticsCount = 0;
+let toastTimer = 0;
+const bump = (line) => {
+  analyticsCount++;
+  abtn.textContent = `Analytics (${analyticsCount})`;
+  alog(line);
+};
+const toast = (msg) => {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1800);
+};
+
+// ── Rail icons (inline SVG, 24×24) ─────────────────────────────────────
+const heart = (filled) => `<svg viewBox="0 0 24 24" ${filled
+  ? 'fill="#fff"' : 'fill="none" stroke="#fff" stroke-width="1.8"'}>
+  <path d="M12 20.5C7 16.5 3.5 13.3 3.5 9.6 3.5 7 5.5 5 8 5c1.6 0 3.1.8 4 2.1C12.9 5.8 14.4 5 16 5c2.5 0 4.5 2 4.5 4.6 0 3.7-3.5 6.9-8.5 10.9Z"/></svg>`;
+const share = `<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M12 3v12M8.5 6.5 12 3l3.5 3.5M5 12v7a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 19v-7"/></svg>`;
+const speaker = (mutedNow) => mutedNow
+  ? `<svg viewBox="0 0 24 24" fill="#fff"><path d="M4 9v6h4l5 4V5L8 9H4Z"/><path d="M16 9l5 6M21 9l-5 6" stroke="#fff" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>`
+  : `<svg viewBox="0 0 24 24" fill="#fff"><path d="M4 9v6h4l5 4V5L8 9H4Z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12" stroke="#fff" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>`;
+const dots = `<svg viewBox="0 0 24 24" fill="#fff"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>`;
+
+// ── Demo state (host-owned, like the mobile demos) ─────────────────────
+const liked = new Set();
+const likeCounts = { 0: 1240, 1: 87, 3: 356, 4: 9, 5: 2031 };
+const shareCounts = { 0: 61, 1: 12, 3: 44, 4: 2, 5: 118 };
+const fmt = (n) => n >= 1000 ? (n / 1000).toFixed(1).replace(/\.0$/, "") + "K" : String(n);
+
+const portraitClips = [
+  ["The memory scan", "@tearsofsteel · Forty years on, they scan his memories of her — every one still intact. #scifi"],
+  ["Forty years later", "@tearsofsteel · Old Thom returns to the ruined church where it all began. #shortfilm"],
+  ["Sponsored — OGPlayer", "One player API — multi-DRM, ads, subtitles, casting. Free to evaluate at ogplayer.tv"],
+  ["Rooftops of Amsterdam", "@tearsofsteel · The projection sweeps across the old city's rooftops. #vfx"],
+  ["Face to face", "@tearsofsteel · Thom and the machine that remembers him, alone in the ruins. #robots"],
+  ["The final projection", "@tearsofsteel · He reaches out one last time — released CC-BY by the Blender Foundation. #ccby"],
+];
+
+let currentMode = -1;
+
+function rail(i) {
+  return [
+    { iconSvg: heart(liked.has(i)),
+      label: fmt((likeCounts[i] ?? 42) + (liked.has(i) ? 1 : 0)),
+      isActive: liked.has(i), accessibilityLabel: "Like",
+      onClick: () => { liked.has(i) ? liked.delete(i) : liked.add(i); enter(currentMode, false); } },
+    { iconSvg: share, label: fmt(shareCounts[i] ?? 7), accessibilityLabel: "Share",
+      onClick: () => { shareCounts[i] = (shareCounts[i] ?? 7) + 1;
+        toast("Share tapped — your share sheet goes here"); enter(currentMode, false); } },
+    { iconSvg: speaker(feed.muted),
+      label: feed.muted ? "Unmute" : "Mute", isActive: feed.muted,
+      accessibilityLabel: "Mute",
+      onClick: () => { feed.muted = !feed.muted; enter(currentMode, false); } },
+    { iconSvg: dots, accessibilityLabel: "More",
+      onClick: () => { toast("Your menu goes here");
+        bump("— ⋯ tapped: your menu goes here —"); } },
+  ];
+}
+
+// Like + share for the split layouts — the rail rides inside the video
+// section there (Android parity); offset keys keep per-mode like state.
+function railLite(i, off) {
+  const k = i + off;
+  return [
+    { iconSvg: heart(liked.has(k)),
+      label: fmt((likeCounts[i] ?? 42) + (liked.has(k) ? 1 : 0)),
+      isActive: liked.has(k), accessibilityLabel: "Like",
+      onClick: () => { liked.has(k) ? liked.delete(k) : liked.add(k); enter(currentMode, false); } },
+    { iconSvg: share, label: fmt(shareCounts[k] ?? 7), accessibilityLabel: "Share",
+      onClick: () => { shareCounts[k] = (shareCounts[k] ?? 7) + 1;
+        toast("Share tapped — your share sheet goes here"); enter(currentMode, false); } },
+  ];
+}
+
+function items(mode) {
+  if (mode === 2) {
+    const wides = [
+      ["The old church",
+       "Amsterdam's canal belt, forty years on. The survivors kept the church exactly as it was on the night of the projection — every stone, every cable, every memory of her still wired into the walls.",
+       "ABOVE_VIDEO"],
+      ["Crossing the bridge",
+       "Thom walks the Oudezijds bridge one more time. The city looks ordinary — bicycles, canal houses, tourists — but the machines remember everything that happened here.",
+       "BELOW_VIDEO"],
+      ["The machine waits",
+       "It has stood on the bridge for decades, silent and patient — and this text lives in the section above it.",
+       "ABOVE_VIDEO"],
+    ];
+    return wides.map(([title, subtitle, placement], i) => ({
+      media: { url: `${BASE}/w169-0${i + 1}.mp4`, title },
+      posterUrl: `${BASE}/w169-0${i + 1}.jpg`,
+      railActions: railLite(i, 10),
+      title, subtitle, textPlacement: placement, contentFit: "FILL",
+    }));
+  }
+  if (mode === 3) {
+    const pairs = [["01", "04", "Two sources, one page"], ["02", "05", "Audio from the bottom half"]];
+    return pairs.map(([a, b, title], i) => ({
+      media: { url: `${BASE}/clip${a}.mp4`, title },
+      secondaryMedia: { url: `${BASE}/clip${b}.mp4` },
+      splitAudioSource: i === 1 ? "SECONDARY" : "PRIMARY",
+      posterUrl: `${BASE}/clip${a}.jpg`,
+      // Full rail on split video (Android parity): like, share, mute, ⋯.
+      railActions: rail(i),
+      title,
+    }));
+  }
+  if (mode === 4 || mode === 5) {
+    return [1, 2, 3].map((n) => ({
+      media: { url: `${BASE}/broken-clip0${n}.mp4`, title: `Broken stream ${n}` },
+      posterUrl: `${BASE}/clip0${n}.jpg`,
+    }));
+  }
+  return portraitClips.map(([title, subtitle], i) => {
+    const sponsored = i === 2;
+    return {
+      media: { url: sponsored ? `${BASE}/ad-ogplayer.mp4` : `${BASE}/clip0${i + 1}.mp4`, title },
+      posterUrl: sponsored ? `${BASE}/ad-ogplayer.jpg` : `${BASE}/clip0${i + 1}.jpg`,
+      railActions: (mode === 1 && !sponsored) ? rail(i) : [],
+      title, subtitle,
+      // The ad spot keeps its full frame on every page ratio (FIT; its
+      // background matches the feed).
+      contentFit: sponsored ? "FIT" : undefined,
+      isSponsored: sponsored,
+    };
+  });
+}
+
+function config(mode) {
+  if (mode === 1) return {
+    showTitle: true, showSubtitle: true,
+    textFontFamily: "Georgia, 'Times New Roman', serif",
+    titleTextSize: 18, subtitleTextSize: 14.5,
+    progressBarColor: "#F6C445", progressBarTrackColor: "rgba(246,196,69,0.25)",
+    progressBarThickness: 3,
+    playIconSvg: `<svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z" fill="#F6C445"/></svg>`,
+  };
+  if (mode === 2) return {
+    showTitle: true, showSubtitle: true,
+    titleTextSize: 21, subtitleTextSize: 15.5,
+    textFontFamily: "Georgia, 'Times New Roman', serif",
+    textBandColor: "rgba(20,24,33,0.8)", textBandFraction: 0.36,
+  };
+  if (mode === 3 || mode === 4) return { showTitle: true };
+  if (mode === 5) return { showTitle: true };
+  return {};
+}
+
+// ── Chooser ────────────────────────────────────────────────────────────
+const MODES = [
+  ["VERTICAL VIEW", [
+    ["OG vertical view",
+     "The feed exactly as the SDK ships it: video, tap-to-pause, progress hairline. No title, no subtitle, no icons — the right rail is an empty placeholder your app fills (up to 6 actions).", 0],
+    ["Custom: icons, title & badge",
+     "Everything the host can add: title + subtitle in a custom font, custom play glyph, a custom AD badge on the sponsored item, and rail actions with live state — like, share, mute and a ⋯ hook.", 1],
+  ]],
+  ["SPLIT VIEW", [
+    ["Split screen: text + video",
+     "The page splits into a text section and a video section — text above or below (textPlacement), sized by textBandFraction, with band background color, custom font and text sizes. Swipe: item 2 has the text below.", 2],
+    ["Split video: two sources",
+     "Two videos on one page — the primary plays on top with audio, scrubbing and analytics; the second plays below, starting in the same frame and pausing/resuming with the primary (secondaryMedia). Page 2 flips the audio to the bottom half.", 3],
+  ]],
+  ["ERROR HANDLING", [
+    ["Errors: SDK default",
+     "Three deliberately broken streams. The SDK's built-in compact error state: dimmed page, message, Retry — and swiping past a failed page always works.", 4],
+    ["Errors: custom overlay",
+     "The same broken streams with the host's own error surface via the errorOverlay slot — your copy, your buttons, our retry.", 5],
+  ]],
+];
+for (const [group, rows] of MODES) {
+  const g = document.createElement("div");
+  g.className = "grp"; g.textContent = group;
+  modesEl.appendChild(g);
+  for (const [title, desc, mode] of rows) {
+    const b = document.createElement("button");
+    b.className = "mode";
+    b.innerHTML = `<h3></h3><p></p>`;
+    b.querySelector("h3").textContent = title;
+    b.querySelector("p").textContent = desc;
+    b.addEventListener("click", () => {
+      // Each mode gets its own analytics session (mobile-demo parity).
+      analyticsCount = 0; abtn.textContent = "Analytics (0)";
+      document.getElementById("alog").textContent = "";
+      enter(mode, true);
+    });
+    modesEl.appendChild(b);
+  }
+}
+
+function enter(mode, fresh) {
+  currentMode = mode;
+  phone.classList.remove("choosing");
+  mtitle.textContent = mode === 1 ? "Vertical feed — custom" : "Vertical feed";
+  if (fresh) feed.config = config(mode);
+  feed.sponsoredBadge = mode === 1 ? () => {
+    const chip = document.createElement("span");
+    chip.style.cssText = "display:inline-block;background:#F6C445;color:#131313;" +
+      "font:700 12px sans-serif;padding:3px 8px;border-radius:4px;";
+    chip.textContent = "AD";
+    return chip;
+  } : null;
+  feed.errorOverlay = mode === 5 ? (error, retry) => {
+    const box = document.createElement("div");
+    box.style.cssText = "background:#17181d;border-radius:14px;padding:22px 26px;" +
+      "text-align:center;color:#fff;font-family:sans-serif;max-width:80%;";
+    const h = document.createElement("div");
+    h.style.cssText = "font-size:16px;font-weight:700;";
+    h.textContent = "😕  This clip won't play";
+    const m = document.createElement("div");
+    m.style.cssText = "font-size:13px;color:rgba(255,255,255,.72);margin-top:8px;";
+    m.textContent = `Error ${error.code} — this panel is the demo app's UI.`;
+    const b = document.createElement("button");
+    b.style.cssText = "margin-top:14px;background:#F6C445;color:#131313;border:0;" +
+      "border-radius:999px;padding:10px 22px;font:700 14px sans-serif;cursor:pointer;";
+    b.textContent = "Try again";
+    b.addEventListener("click", retry);
+    box.append(h, m, b);
+    return box;
+  } : null;
+  feed.onItemDoubleTapped = mode === 1
+    ? (index) => bump(`— double-tap on item ${index}: your action here —`)
+    : null;
+  feed.items = items(mode);
+}
+
+// ── Feed events → analytics panel ──────────────────────────────────────
+feed.addEventListener("og-analytics", (e) => {
+  const ev = e.detail.event;
+  const parts = Object.entries(ev).filter(([k]) => k !== "type")
+    .map(([k, v]) => `${k}=${typeof v === "object" ? (v?.code ?? "…") : v}`).join(" ");
+  bump(`analytics: ${ev.type}${parts ? " " + parts : ""}`);
+});
+feed.addEventListener("og-itemerror", (e) =>
+  alog(`onItemError: item ${e.detail.index} → ${e.detail.error.code}`));
+feed.addEventListener("og-nearend", (e) =>
+  alog(`onNearEnd: ${e.detail.remaining} remaining`));
+feed.addEventListener("og-mutedfallback", () =>
+  toast("Autoplay was blocked — playing muted. Tap the speaker to unmute."));
+
+abtn.addEventListener("click", () => apanel.classList.add("open"));
+document.getElementById("aclose").addEventListener("click", () => apanel.classList.remove("open"));
+document.getElementById("back").addEventListener("click", () => {
+  apanel.classList.remove("open");
+  phone.classList.add("choosing");
+  feed.items = [];
+  currentMode = -1;
+});
+</script>
+</body>
+</html>

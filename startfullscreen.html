@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Starts in fullscreen — OGPlayer</title>
+<link rel="stylesheet" href="./assets/demo.css">
+<style>
+  .startwrap { position:relative; }
+  #start { position:absolute; inset:0; z-index:5; display:flex; flex-direction:column;
+    gap:14px; align-items:center; justify-content:center; background:rgba(14,14,16,.92);
+    border:0; color:#fff; cursor:pointer; border-radius:10px; }
+  #start svg { width:64px; height:64px; }
+  #start .t { font-size:17px; font-weight:600; }
+  #start .d { font-size:12.5px; color:rgba(255,255,255,.48); max-width:420px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="startwrap">
+    <og-player id="pl"></og-player>
+    <button id="start">
+      <svg viewBox="0 0 32 32"><path d="M12 3H29V20L20 29H3V12Z" fill="none" stroke="rgba(255,255,255,0.72)" stroke-width="2.6" stroke-linejoin="round"/><path d="M13 10L22.5 16L13 22Z" fill="#F6C445"/></svg>
+      <span class="t">Start watching — opens in fullscreen</span>
+      <span class="d">Browsers only allow entering fullscreen from a tap, so a
+      "starts in fullscreen" experience on the web begins with the user's first
+      gesture — this button is that gesture.</span>
+    </button>
+  </div>
+  <p class="note">The exit button is host-intercepted (onFullscreenExitRequest): instead
+  of just leaving fullscreen, this page logs the request, exits and returns to the demo
+  list — so your app decides what leaving fullscreen means (close the page, go back…). Esc exits directly (browser
+  behavior that cannot be intercepted).</p>
+  <div class="log" id="log"></div>
+  <footer class="demo" id="foot"></footer>
+</div><script type="importmap">{ "imports": { "ogplayer": "./node_modules/ogplayer/dist/ogplayer.js" } }</script>
+<script type="module">
+import { OGPlayer } from "ogplayer";
+import { pageHeader, makeLog, attachEventLogging, TOS, FOOTER } from "./assets/demo.js";
+
+pageHeader("Starts in fullscreen", "First tap enters fullscreen; the exit button is host-intercepted.");
+document.getElementById("foot").textContent = FOOTER;
+
+const player = new OGPlayer();
+const el = document.getElementById("pl");
+el.player = player;
+const log = makeLog(document.getElementById("log"));
+attachEventLogging(player, log);
+
+el.config = {
+  onFullscreenExitRequest: () => {
+    log("onFullscreenExitRequest — host intercepts: leaving fullscreen and closing the screen");
+    el.exitFullscreen();
+    setTimeout(() => { location.href = "./index.html"; }, 900);
+  },
+};
+
+document.getElementById("start").addEventListener("click", async (e) => {
+  e.currentTarget.remove();
+  log("— entering fullscreen + loading —");
+  try { await el.enterFullscreen(); } catch { log("fullscreen rejected by browser"); }
+  player.load({ url: TOS, title: "Starts in fullscreen" });
+});
+</script>
+</body>
+</html>

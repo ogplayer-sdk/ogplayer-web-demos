@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Live & DVR — OGPlayer</title>
+<link rel="stylesheet" href="./assets/demo.css">
+</head>
+<body>
+<div class="wrap">
+  <og-player id="pl"></og-player>
+  <div class="chips" id="chips"></div>
+  <p class="note" id="note"></p>
+  <div class="log" id="log"></div>
+  <footer class="demo" id="foot"></footer>
+</div><script type="importmap">{ "imports": { "ogplayer": "./node_modules/ogplayer/dist/ogplayer.js" } }</script>
+<script type="module">
+import { OGPlayer } from "ogplayer";
+import { pageHeader, makeLog, attachEventLogging, FOOTER } from "./assets/demo.js";
+
+pageHeader("Live & DVR", "Live edge, seekable window, behind-edge state — LiveInfo on the web.");
+document.getElementById("foot").textContent = FOOTER;
+
+const player = new OGPlayer();
+document.getElementById("pl").player = player;
+const log = makeLog(document.getElementById("log"));
+attachEventLogging(player, log);
+
+const LIVE_URL = "https://demo.unified-streaming.com/k8s/live/stable/live.isml/.m3u8";
+const modes = {
+  "Live with DVR window": ["LIVE_DVR",
+    "Seekable live: scrub back into the DVR window — the LIVE chip dims behind the edge; tap it to snap back. Speed is hidden (live)."],
+  "Pure live (no DVR)": ["LIVE",
+    "Not seekable: the scrub bar, ±10s buttons, time labels and speed disappear — only the LIVE chip and live-safe controls remain."],
+};
+const chips = document.getElementById("chips");
+Object.entries(modes).forEach(([label, [type, note]], i) => {
+  const b = document.createElement("button");
+  b.className = "chip" + (i === 0 ? " on" : "");
+  b.textContent = label;
+  b.addEventListener("click", () => {
+    [...chips.children].forEach((c) => c.classList.remove("on"));
+    b.classList.add("on");
+    document.getElementById("note").textContent = note;
+    log(`— loading ${label} —`);
+    player.load({ url: LIVE_URL, title: "Live & DVR demo", streamType: type });
+  });
+  chips.appendChild(b);
+});
+document.getElementById("note").textContent = modes["Live with DVR window"][1];
+log("— loading Live with DVR window —");
+player.load({ url: LIVE_URL, title: "Live & DVR demo", streamType: "LIVE_DVR" });
+</script>
+</body>
+</html>

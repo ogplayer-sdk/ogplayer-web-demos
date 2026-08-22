@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Custom error messages — OGPlayer</title>
+<link rel="stylesheet" href="./assets/demo.css">
+<style>
+  .inputrow { display:flex; gap:10px; margin-top:14px; }
+  .inputrow input { flex:1; background:#17181A; border:1px solid rgba(255,255,255,.18);
+    border-radius:8px; color:#F2F0EA; font-size:14px; padding:10px 12px; outline:none; }
+  .inputrow input:focus { border-color:rgba(246,196,69,.6); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <og-player id="pl"></og-player>
+  <div class="inputrow">
+    <input id="msg" type="text" value=""
+      placeholder="Your error message — any language; {code} = error code"
+      aria-label="Custom error message">
+    <button class="chip on" id="reload">Reload</button>
+  </div>
+  <div class="chips" id="retrymode" style="margin-top:10px">
+    <button class="chip on" data-mode="sdk">SDK Retry button</button>
+    <button class="chip" data-mode="label">Custom label</button>
+    <button class="chip" data-mode="own">No retry button</button>
+    <button class="chip" data-mode="overlay">Custom overlay</button>
+    <button class="chip" data-mode="branded">Branded style</button>
+  </div>
+  <p class="note">Your own error overlay, in any language — <code>errorMessageProvider</code>
+  receives the full <code>OGPlayerError</code> (stable codes: 2000-network,
+  3000-source, 4000-DRM, 5000-renderer, 6000-live, 9000-unknown) and returns the text to show;
+  <code>{code}</code> is replaced in this demo. The page loads a stream URL that doesn't
+  exist, so it always fails — empty input shows the SDK default; type a message and hit
+  Reload to see yours. The raw error still reaches <code>onError</code> unchanged for your
+  own logging. The retry chips: the SDK's Retry button, a custom label
+  (<code>retryButtonLabel</code>), or no retry button at all
+  (<code>showRetryButton: false</code>).</p>
+  <div class="log" id="log"></div>
+  <footer class="demo" id="foot"></footer>
+</div>
+<script type="importmap">{ "imports": { "ogplayer": "./node_modules/ogplayer/dist/ogplayer.js" } }</script>
+<script type="module">
+import { OGPlayer } from "ogplayer";
+import { pageHeader, makeLog, attachEventLogging, FOOTER } from "./assets/demo.js";
+
+pageHeader("Custom error messages", "Map our stable error codes to your own copy — any language, any tone.");
+document.getElementById("foot").textContent = FOOTER;
+
+const player = new OGPlayer();
+const el = document.getElementById("pl");
+el.player = player;
+const log = makeLog(document.getElementById("log"));
+attachEventLogging(player, log);
+
+const input = document.getElementById("msg");
+// Retry demo modes: the SDK button as-is, a relabeled one, or none at all —
+// the page draws its own button and calls player.retry() (same internal
+// resume tracking, zero extra code).
+let retryMode = "sdk";
+// 100% page-owned error UI for the "Custom overlay" mode — deliberately
+// styled unlike the SDK chrome (card, capsule button, emoji).
+function hostErrorPanel(error, retry) {
+  const wrap = document.createElement("div");
+  wrap.style.cssText = "display:flex;align-items:center;justify-content:center;" +
+    "width:100%;height:100%;background:rgba(18,19,23,0.92)";
+  const card = document.createElement("div");
+  card.style.cssText = "background:#1d1f24;border-radius:14px;padding:14px 22px;" +
+    "text-align:center;font-family:system-ui;color:#fff;max-width:85%";
+  card.innerHTML = `<div style="font-size:15px;font-weight:600">😕&nbsp; Something broke on our side</div>` +
+    `<div style="font-size:12px;color:rgba(255,255,255,0.7);margin-top:4px">` +
+    `Error ${error.code} — this whole panel is the page's UI.</div>`;
+  const btn = document.createElement("button");
+  btn.textContent = "Try again";
+  btn.style.cssText = "margin-top:10px;background:#F6C445;color:#131313;border:none;" +
+    "border-radius:999px;padding:7px 20px;font-weight:600;font-size:13px;cursor:pointer";
+  btn.addEventListener("click", retry);
+  card.appendChild(btn);
+  wrap.appendChild(card);
+  return wrap;
+}
+
+function applyConfig() {
+  el.config = {
+    showRetryButton: retryMode !== "own",
+    retryButtonLabel: retryMode === "label" ? "Probeer opnieuw" : "Retry",
+    errorMessageProvider: (error) => {
+      const text = input.value.trim();
+      return text ? text.replaceAll("{code}", String(error.code)) : null; // null → SDK default
+    },
+    // "Custom overlay": the SDK mounts OUR element on the player surface.
+    renderErrorOverlay: retryMode === "overlay" ? hostErrorPanel : undefined,
+    // 0.2.1 "Branded style": the error overlay is themeable — serif text +
+    // a blue button prove the SDK look is not baked in.
+    ...(retryMode === "branded" ? {
+      errorTextStyle: "font-family:Georgia,serif;font-size:16px",
+      retryButtonStyle: "background:#3D6EF5;color:#fff;font-family:Georgia,serif",
+    } : {}),
+  };
+}
+document.querySelectorAll("#retrymode .chip[data-mode]").forEach((b) => {
+  b.addEventListener("click", () => {
+    document.querySelectorAll("#retrymode .chip[data-mode]").forEach((c) => c.classList.remove("on"));
+    b.classList.add("on");
+    retryMode = b.dataset.mode;
+    applyConfig();
+    reload();
+  });
+});
+applyConfig();
+
+// A stream that doesn't exist — deterministic failure on every platform.
+const MISSING = "https://media.ogplayer.tv/tos/does-not-exist.m3u8";
+function reload() {
+  log("— loading a missing stream (will fail) —");
+  player.load({ url: MISSING, title: "Custom error demo" });
+}
+document.getElementById("reload").addEventListener("click", reload);
+input.addEventListener("keydown", (e) => { if (e.key === "Enter") reload(); });
+reload();
+</script>
+</body>
+</html>

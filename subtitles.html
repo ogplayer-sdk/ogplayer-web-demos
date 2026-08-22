@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Subtitles & audio — OGPlayer</title>
+<link rel="stylesheet" href="./assets/demo.css">
+</head>
+<body>
+<div class="wrap">
+  <og-player id="pl"></og-player>
+  <div class="chips" id="srcChips"></div>
+  <div class="chips" id="sizeChips"></div>
+  <div class="chips" id="fontChips"></div>
+  <p class="note">Tap the player, then use the CC and audio-note menus to switch
+  tracks. Embedded tracks come from the manifest; sideloaded are external WebVTT
+  files attached by the app. "Multi-audio" carries the film's three real
+  mixes — stereo, Dolby 5.1 surround and the Music &amp; FX track with no
+  dialogue (switch and the voices vanish). "Positioned"
+  attaches a VTT exercising every cue setting (line / position / align / size) —
+  the browser honors authored positioning natively.</p>
+  <div class="log" id="log"></div>
+  <footer class="demo" id="foot"></footer>
+</div><script type="importmap">{ "imports": { "ogplayer": "./node_modules/ogplayer/dist/ogplayer.js" } }</script>
+<script type="module">
+import { OGPlayer } from "ogplayer";
+import { pageHeader, makeLog, attachEventLogging, TOS, TOS_SUBS, FOOTER } from "./assets/demo.js";
+
+pageHeader("Subtitles & audio", "Embedded manifest tracks, sideloaded VTT, subtitle text size.");
+document.getElementById("foot").textContent = FOOTER;
+
+const player = new OGPlayer();
+const el = document.getElementById("pl");
+el.player = player;
+const log = makeLog(document.getElementById("log"));
+attachEventLogging(player, log);
+
+const sources = {
+  "Embedded (in manifest)": () => player.load({ url: TOS_SUBS, title: "Embedded subtitles (5 languages)" }),
+  "Multi-audio (stereo · 5.1 · M&E)": () => player.load({
+    url: "https://media.ogplayer.tv/tos/master.m3u8",
+    title: "Angel One — five audio languages",
+  }),
+  "Positioned VTT (line/position cues)": () => player.load({
+    url: TOS,
+    title: "Positioned VTT — cue settings",
+    sideloadedSubtitles: [
+      { url: "./subs/test_cue_settings.vtt", language: "en", label: "Cue settings test", isDefault: true },
+    ],
+  }),
+  "Sideloaded VTT": () => player.load({
+    url: TOS, title: "Sideloaded VTT (5 languages)",
+    sideloadedSubtitles: [
+      { url: "./subs/tears_of_steel_en.vtt", language: "en", label: "English", isDefault: true },
+      { url: "./subs/tears_of_steel_de.vtt", language: "de", label: "Deutsch" },
+      { url: "./subs/tears_of_steel_fr.vtt", language: "fr", label: "Français" },
+      { url: "./subs/tears_of_steel_es.vtt", language: "es", label: "Español" },
+      { url: "./subs/tears_of_steel_ru.vtt", language: "ru", label: "Русский" },
+    ],
+  }),
+};
+const sizes = { Small: 0.8, Default: 1.0, Large: 1.4, "X-Large": 1.8 };
+
+function chipRow(host, entries, def, onPick) {
+  Object.entries(entries).forEach(([label, value]) => {
+    const b = document.createElement("button");
+    b.className = "chip" + (label === def ? " on" : "");
+    b.textContent = label;
+    b.addEventListener("click", () => {
+      [...host.children].forEach((c) => c.classList.remove("on"));
+      b.classList.add("on");
+      onPick(label, value);
+    });
+    host.appendChild(b);
+  });
+}
+chipRow(document.getElementById("srcChips"), sources, "Embedded (in manifest)",
+  (label, run) => { log(`— loading ${label} —`); run(); });
+chipRow(document.getElementById("sizeChips"), sizes, "Default", (label, scale) => {
+  player.subtitleTextScale = scale; // the element picks the change up itself
+  log(`subtitle size → ${scale}×`);
+});
+// Caption typeface — SubtitleStyle.fontFamily. Georgia is the obviously-
+// different "custom" font; a real page passes its brand font-family.
+const fonts = { "System font (default)": null, "Georgia (custom)": "Georgia, serif" };
+chipRow(document.getElementById("fontChips"), fonts, "System font (default)", (label, family) => {
+  player.subtitleStyle = { ...player.subtitleStyle, fontFamily: family };
+  log(`caption font → ${label}`);
+});
+log("— loading Embedded (in manifest) —");
+sources["Embedded (in manifest)"]();
+</script>
+</body>
+</html>

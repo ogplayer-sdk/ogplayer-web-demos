@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FreeWheel — OGPlayer</title>
+<link rel="stylesheet" href="./assets/demo.css">
+</head>
+<body>
+<div class="wrap">
+  <og-player id="pl"></og-player>
+  <div class="chips" id="chips"></div>
+  <p class="note">FreeWheel (MRM) ads from a single <code>FreewheelConfig</code>, two
+  ways to run it: the <b>native FreeWheel SDK</b> (<code>FreewheelAdsProvider</code> —
+  FW's own AdManager.js makes the request and plays its slot schedule), or the
+  <b>FW server as VMAP through IMA</b> (no FreeWheel SDK needed). Pick one per
+  player; the pre/mid/post-roll UI is identical either way.</p>
+  <div class="log" id="log"></div>
+  <footer class="demo">OGPlayer is a product of Inverse DOO</footer>
+</div><script type="importmap">{ "imports": { "ogplayer": "./node_modules/ogplayer/dist/ogplayer.js" } }</script>
+<script type="module">
+import { OGPlayer, ImaAdsProvider, FreewheelAdsProvider, OGPLAYER_BUILD } from "ogplayer";
+import { pageHeader, makeLog, attachEventLogging, attachAdEventLogging } from "./assets/demo.js";
+
+pageHeader("FreeWheel", "Your MRM network's ad schedule from one FreewheelConfig — native FreeWheel SDK or VMAP through IMA.");
+
+/**
+ * FreeWheel demo configuration — fill in with YOUR network's values.
+ * Everything comes from your FreeWheel (MRM) account; your FreeWheel account
+ * manager can provide all of it:
+ *  - networkId       your MRM network id (a number)
+ *  - serverUrl       your ad server, e.g. https://<hash>.v.fwmrm.net
+ *  - profile         usually <networkId>:<profile_name> (a _html5/_live profile)
+ *  - siteSectionId   this player's placement as registered in MRM
+ *  - videoAssetId    the content's id as ingested in MRM (ad rules attach to it);
+ *                    its exact duration must be passed so midrolls resolve
+ * Consent & identity parameters (_fw_gdpr, _fw_gdpr_consent, device ids, custom
+ * key-values…) are the page's responsibility and go into globalParameters
+ * verbatim — OGPlayer never fabricates consent. NOTE: FreeWheel's `flag` list is
+ * space-separated — pass real spaces (" play sltp emcr…").
+ */
+const demoFwConfig = {
+  networkId: 0,        /* put your FreeWheel network id here */
+  serverUrl: "",       /* put your ad server URL here */
+  profile: "",         /* put your player profile here */
+  siteSectionId: "",   /* put your site section id here */
+  videoAssetId: "",    /* put your MRM video asset id here */
+  videoDurationMs: 0,  /* put your asset's exact duration (ms) here */
+  globalParameters: {
+    /* put your consent / identity / targeting key-values here, e.g.:
+       _fw_gdpr: "1",
+       _fw_gdpr_consent: "<your TCF consent string>", */
+  },
+};
+/** The content stream behind videoAssetId (the actual video the asset id
+ * refers to) — prefilled with the demo clip; swap in your own. */
+const CONTENT_URL = "https://media.ogplayer.tv/tos/master.m3u8";
+
+const isConfigured = demoFwConfig.networkId > 0 && demoFwConfig.serverUrl &&
+  demoFwConfig.profile && demoFwConfig.siteSectionId && demoFwConfig.videoAssetId &&
+  demoFwConfig.videoDurationMs > 0;
+
+const log = makeLog(document.getElementById("log"));
+log(`sdk bundle built: ${OGPLAYER_BUILD}`);
+
+if (!isConfigured) {
+  const wrap = document.querySelector(".wrap");
+  const notice = document.createElement("div");
+  notice.className = "note";
+  notice.style.cssText = "border:1px solid rgba(255,255,255,0.25);border-radius:10px;padding:16px 18px;";
+  notice.innerHTML = `<strong>FreeWheel setup needed</strong><br>
+    FreeWheel is a customer-licensed ad server — there are no public sample tags.
+    Open <code>demo/freewheel.html</code> and fill in the <code>demoFwConfig</code>
+    placeholders with your network's values (your FreeWheel account manager has
+    them), plus your content stream URL. The player then requests your VMAP
+    schedule and plays it exactly like the Ads demo.`;
+  wrap.insertBefore(notice, document.getElementById("log"));
+  log("— FreeWheel setup needed: fill in demoFwConfig in this page's source —");
+} else {
+  const player = new OGPlayer();
+  const el = document.getElementById("pl");
+  el.player = player;
+  el.config = { adBlockerPolicy: "block" };
+  attachEventLogging(player, log);
+  attachAdEventLogging(player, log);
+
+  const modes = {
+    // FW's own AdManager.js: FW makes the request and renders the ads.
+    "Native FreeWheel SDK": () => new FreewheelAdsProvider(),
+    // FW answers with standard VMAP; IMA plays it. FreeWheel traffics VPAID
+    // creatives, which stall in IMA's secure sandbox — hence insecure mode.
+    "FreeWheel as VMAP (IMA)": () => new ImaAdsProvider({ vpaidMode: "insecure" }),
+  };
+  const chips = document.getElementById("chips");
+  function run(label, makeProvider, chipEl) {
+    [...chips.children].forEach((c) => c.classList.remove("on"));
+    chipEl?.classList.add("on");
+    player.adsProvider = makeProvider();
+    // No gesture on auto-start: declare muted playback up front so FW/IMA
+    // (and any VPAID creative) pick muted-autoplay behavior.
+    player.isMuted = true;
+    log(`— ${label}: requesting your FreeWheel schedule —`);
+    player.load({ url: CONTENT_URL, title: `FreeWheel demo — ${label}`, adBreaks: demoFwConfig });
+    setTimeout(() => {
+      if (!player.isPlaying && !player.isPlayingAd && !player.adsPending && !player.holdPlayback) player.play();
+    }, 1200);
+  }
+  Object.entries(modes).forEach(([label, make], i) => {
+    const b = document.createElement("button");
+    b.className = "chip" + (i === 0 ? " on" : "");
+    b.textContent = label;
+    b.addEventListener("click", () => run(label, make, b));
+    chips.appendChild(b);
+  });
+  run("Native FreeWheel SDK", modes["Native FreeWheel SDK"], chips.children[0]);
+}
+</script>
+</body>
+</html>
