@@ -101,6 +101,7 @@ function applyConfig() {
         "font-family:Georgia,serif",
     } : {}),
     ...(mode === "hidden" ? { showUpNext: false } : {}),
+    ...(mode === "ads" ? { adBlockerPolicy: "block" } : {}),
   };
   document.getElementById("note").textContent = NOTES[mode];
 }
