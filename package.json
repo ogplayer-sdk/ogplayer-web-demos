@@ -8,6 +8,6 @@
     "start": "node server.mjs"
   },
   "dependencies": {
-    "ogplayer": "^1.0.2"
+    "ogplayer": "^1.0.3"
   }
 }
