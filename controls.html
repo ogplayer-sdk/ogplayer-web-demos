@@ -70,7 +70,10 @@ FLAGS.forEach(([key, label]) => {
   host.appendChild(l);
 });
 document.getElementById("all").addEventListener("click", () => {
-  const anyOn = Object.values(state).some(Boolean);
+  // showTitle is deliberately preserved by the hide-all below, so it must
+  // not count towards "anything still on" — otherwise one hide-all pins
+  // anyOn true forever and this button can never restore the controls.
+  const anyOn = FLAGS.some(([k]) => k !== "showTitle" && state[k]);
   if (anyOn) Object.assign(state, hidingAllControls({ showTitle: state.showTitle }));
   else FLAGS.forEach(([k]) => { state[k] = true; });
   FLAGS.forEach(([k]) => { inputs[k].checked = state[k]; });
