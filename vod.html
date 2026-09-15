@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VOD playback — OGPlayer</title>
+<link rel="stylesheet" href="./assets/demo.css">
+</head>
+<body>
+<div class="wrap">
+  <og-player id="pl"></og-player>
+  <div class="chips" id="chips"></div>
+  <p class="note">Adaptive HLS VOD. Tap the player for the chrome: scrub with cue-accurate
+  seeking, ±10s transport, quality / speed / audio / CC menus, fullscreen. Double-click
+  the left or right half to seek. "Scrub preview" adds a storyboard track
+  (<code>thumbnailTrackUrl</code>) — hover or drag the scrubber for trick-play
+  thumbnails. All callbacks stream below.</p>
+  <div class="log" id="log"></div>
+  <footer class="demo" id="foot"></footer>
+</div><script type="importmap">{ "imports": { "ogplayer": "./node_modules/ogplayer/dist/ogplayer.js" } }</script>
+<script type="module">
+import { OGPlayer } from "ogplayer";
+import { pageHeader, makeLog, attachEventLogging, TOS, FOOTER } from "./assets/demo.js";
+
+pageHeader("VOD playback", "Adaptive HLS with the full player chrome — transport, precise seeking, quality and track menus, fullscreen.");
+document.getElementById("foot").textContent = FOOTER;
+
+const player = new OGPlayer();
+document.getElementById("pl").player = player;
+const log = makeLog(document.getElementById("log"));
+attachEventLogging(player, log);
+// Storyboard demo asset (VOD chip stays on Tears of Steel; the storyboard
+// chip uses a stream that ships a trick-play track).
+const SB_URL = "https://media.ogplayer.tv/tos/master.m3u8";
+const SB_VTT = "https://media.ogplayer.tv/tos/storyboard/storyboard.vtt";
+const scenarios = {
+  // Starts PAUSED with a poster — press play yourself (the other demos
+  // autoplay; this one shows the pre-play poster experience).
+  "Tears of Steel": () => {
+    log("— loading VOD (paused, poster) —");
+    player.load(
+      { url: TOS, title: "Tears of Steel", posterUrl: "https://media.ogplayer.tv/posters/tos-mech.jpg" },
+      { autoplay: false },
+    );
+  },
+  "Scrub preview (storyboard)": () => {
+    log("— loading VOD with storyboard thumbnails —");
+    player.load({ url: SB_URL, title: "Storyboard demo", thumbnailTrackUrl: SB_VTT });
+  },
+};
+const chips = document.getElementById("chips");
+Object.entries(scenarios).forEach(([label, run], i) => {
+  const b = document.createElement("button");
+  b.className = "chip" + (i === 0 ? " on" : "");
+  b.textContent = label;
+  b.addEventListener("click", () => {
+    [...chips.children].forEach((c) => c.classList.remove("on"));
+    b.classList.add("on");
+    run();
+  });
+  chips.appendChild(b);
+});
+scenarios["Tears of Steel"]();
+</script>
+</body>
+</html>
