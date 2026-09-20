@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DRM — OGPlayer</title>
+<link rel="stylesheet" href="./assets/demo.css">
+</head>
+<body>
+<div class="wrap">
+  <og-player id="pl"></og-player>
+  <div class="group" style="margin:14px 0 0">HLS</div>
+  <div class="chips" style="margin-top:8px">
+    <button class="chip on" id="withdrm">Play with DRM keys</button>
+    <button class="chip" id="withoutdrm">Try WITHOUT keys (proves encryption)</button>
+  </div>
+  <div class="group" id="dashGroup" style="margin:10px 0 0">DASH</div>
+  <div class="chips" id="dashChips" style="margin-top:8px">
+    <button class="chip" id="dashwv">Widevine (open licence)</button>
+    <button class="chip" id="dashmulti">Multi-DRM (token)</button>
+  </div>
+  <p class="note" id="note"></p>
+  <div class="log" id="log"></div>
+  <footer class="demo">Test content &amp; license services: public Widevine and multi-DRM test vectors · OGPlayer is a product of Inverse DOO</footer>
+</div><script type="importmap">{ "imports": { "ogplayer": "./node_modules/ogplayer/dist/ogplayer.js" } }</script>
+<script type="module">
+import { OGPlayer } from "ogplayer";
+import { pageHeader, makeLog, attachEventLogging } from "./assets/demo.js";
+
+pageHeader("DRM", "One item, every scheme — the SDK picks the browser's CDM: Widevine (Chrome/Firefox), PlayReady (Edge), FairPlay (Safari).");
+
+const player = new OGPlayer();
+const el = document.getElementById("pl");
+el.player = player;
+const log = makeLog(document.getElementById("log"));
+attachEventLogging(player, log);
+
+// Public multi-DRM test vector (CMAF, cbcs, single key) + its published token.
+const TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJ2ZXJzaW9uIjogMSwKICAiY29tX2tleV9pZCI6ICI2OWU1NDA4OC1lOWUwLTQ1MzAtOGMxYS0xZWI2ZGNkMGQxNGUiLAogICJtZXNzYWdlIjogewogICAgInR5cGUiOiAiZW50aXRsZW1lbnRfbWVzc2FnZSIsCiAgICAidmVyc2lvbiI6IDIsCiAgICAibGljZW5zZSI6IHsKICAgICAgImFsbG93X3BlcnNpc3RlbmNlIjogdHJ1ZQogICAgfSwKICAgICJjb250ZW50X2tleXNfc291cmNlIjogewogICAgICAiaW5saW5lIjogWwogICAgICAgIHsKICAgICAgICAgICJpZCI6ICIzMDJmODBkZC00MTFlLTQ4ODYtYmNhNS1iYjFmODAxOGEwMjQiLAogICAgICAgICAgImVuY3J5cHRlZF9rZXkiOiAicm9LQWcwdDdKaTFpNDNmd3YremZ0UT09IiwKICAgICAgICAgICJ1c2FnZV9wb2xpY3kiOiAiUG9saWN5IEEiCiAgICAgICAgfQogICAgICBdCiAgICB9LAogICAgImNvbnRlbnRfa2V5X3VzYWdlX3BvbGljaWVzIjogWwogICAgICB7CiAgICAgICAgIm5hbWUiOiAiUG9saWN5IEEiLAogICAgICAgICJwbGF5cmVhZHkiOiB7CiAgICAgICAgICAibWluX2RldmljZV9zZWN1cml0eV9sZXZlbCI6IDE1MCwKICAgICAgICAgICJwbGF5X2VuYWJsZXJzIjogWwogICAgICAgICAgICAiNzg2NjI3RDgtQzJBNi00NEJFLThGODgtMDhBRTI1NUIwMUE3IgogICAgICAgICAgXQogICAgICAgIH0KICAgICAgfQogICAgXQogIH0KfQ._NfhLVY7S6k8TJDWPeMPhUawhympnrk6WAZHOVjER6M';
+const headers = { "X-AxDRM-Message": TOKEN };
+
+const keySystem = window.WebKitMediaKeys || /apple/i.test(navigator.vendor ?? "")
+  ? "FairPlay (Safari)" : "Widevine / PlayReady (EME)";
+document.getElementById("note").textContent =
+  `This browser will use ${keySystem}. Note: this is a DIFFERENT, encrypted copy ` +
+  `of the same open-licensed movie the VOD demo plays — DRM protects a copy, not ` +
+  `a film, and public DRM test content is always CC-licensed. Flip to "without ` +
+  `keys" to see that this copy truly is locked. All three schemes are configured ` +
+  `on one item — exactly how a production app ships one config for every platform. ` +
+  `DASH: the same DrmConfig on MPEG-DASH (Widevine and PlayReady — Chrome, Firefox, ` +
+  `Edge): Google's open Widevine test asset, and the multi-DRM vector with its ` +
+  `licence token from tokenProvider, called for every licence request.`;
+
+// Probe which CDMs this browser actually exposes (helps support forever).
+const cdm = {};
+for (const [name, ks] of [["Widevine", "com.widevine.alpha"],
+                          ["PlayReady", "com.microsoft.playready"],
+                          ["FairPlay", "com.apple.fps"]]) {
+  try {
+    await navigator.requestMediaKeySystemAccess(ks, [{
+      initDataTypes: ["cenc", "sinf", "skd"],
+      videoCapabilities: [{ contentType: 'video/mp4; codecs="avc1.42E01E"' }],
+      audioCapabilities: [{ contentType: 'audio/mp4; codecs="mp4a.40.2"' }],
+    }]);
+    cdm[name] = true;
+    log(`CDM ${name}: available`);
+  } catch {
+    cdm[name] = false;
+    log(`CDM ${name}: not available`);
+  }
+}
+// The DASH rows use Widevine or PlayReady only. A browser with neither (Safari)
+// cannot play them, so the DASH group is not offered there; the SDK would report
+// DRM_UNSUPPORTED (4005) and stop. Clear DASH on the VOD page plays everywhere.
+if (!cdm.Widevine && !cdm.PlayReady) {
+  // style.display, not the hidden attribute: the page CSS lays .chips out as
+  // flex, which overrides [hidden] and left the chips on screen.
+  for (const id of ["dashGroup", "dashChips"]) document.getElementById(id).style.display = "none";
+}
+
+const STREAM = "https://media.axprod.net/TestVectors/Cmaf/protected_1080p_h264_cbcs/manifest.m3u8";
+const DRM = {
+  widevine:  { licenseUrl: "https://drm-widevine-licensing.axprod.net/AcquireLicense", headers },
+  playready: { licenseUrl: "https://drm-playready-licensing.axprod.net/AcquireLicense", headers },
+  fairplay:  {
+    licenseUrl: "https://drm-fairplay-licensing.axprod.net/AcquireLicense",
+    certificateUrl: "https://tools.axinom.com/FPScert/fairplay.cer",
+    headers,
+  },
+};
+// Yes, it is Tears of Steel again — public DRM test vectors use CC content.
+// The point is the ENCRYPTION: flip to "without keys" and the very same URL
+// refuses to play.
+const wBtn = document.getElementById("withdrm");
+const woBtn = document.getElementById("withoutdrm");
+// One selection across both groups; the chrome config follows the item
+// (assigned only when it changes — an assignment rebuilds the chrome).
+let configKey = "{}";
+function select(chip, config) {
+  document.querySelectorAll(".chip").forEach((c) => c.classList.toggle("on", c === chip));
+  const key = JSON.stringify(config);
+  if (key !== configKey) { el.config = config; configKey = key; }
+}
+function run(withKeys) {
+  select(withKeys ? wBtn : woBtn, {});
+  log(withKeys ? "— loading encrypted stream WITH license config —"
+               : "— loading the SAME stream WITHOUT keys: expect no playback —");
+  player.load({
+    url: STREAM,
+    title: withKeys ? "Multi-DRM demo (encrypted)" : "Encrypted — no keys",
+    ...(withKeys ? { drm: DRM } : {}),
+  });
+}
+wBtn.addEventListener("click", () => run(true));
+woBtn.addEventListener("click", () => run(false));
+
+// DASH rows — the same DrmConfig shape on MPEG-DASH.
+const POSTER = "https://media.ogplayer.tv/posters/tos-mech.jpg";
+document.getElementById("dashwv").addEventListener("click", (e) => {
+  // Google's public Widevine test asset against its public test proxy — a
+  // plain licence URL, no token. One audio track, no subtitles.
+  select(e.currentTarget, { showSubtitleButton: false, showAudioTrackButton: false });
+  log("— loading DASH: Widevine (open licence) —");
+  player.load({
+    url: "https://storage.googleapis.com/wvmedia/cenc/h264/tears/tears.mpd",
+    title: "Tears of Steel — Widevine (DASH)", posterUrl: POSTER,
+    drm: { widevine: { licenseUrl: "https://proxy.uat.widevine.com/proxy?provider=widevine_test" } },
+  });
+});
+document.getElementById("dashmulti").addEventListener("click", (e) => {
+  // The multi-DRM vector, DASH flavour: Widevine AND PlayReady on one item,
+  // three audio and three subtitle tracks. The licence token comes from
+  // tokenProvider, which the SDK calls for EVERY licence request (renewals
+  // included) — fetch or refresh a real token there.
+  select(e.currentTarget, {});
+  log("— loading DASH: Multi-DRM (token) —");
+  player.load({
+    url: "https://media.axprod.net/TestVectors/Cmaf/protected_1080p_h264_cbcs/manifest.mpd",
+    title: "Multi-DRM demo (DASH, encrypted)", posterUrl: POSTER,
+    drm: {
+      widevine: { licenseUrl: "https://drm-widevine-licensing.axprod.net/AcquireLicense" },
+      playready: { licenseUrl: "https://drm-playready-licensing.axprod.net/AcquireLicense" },
+      tokenProvider: async ({ renewal }) => {
+        log(`tokenProvider called (renewal=${renewal})`);
+        return { "X-AxDRM-Message": TOKEN };
+      },
+    },
+  });
+});
+run(true);
+</script>
+</body>
+</html>

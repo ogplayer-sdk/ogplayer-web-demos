@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Localised chrome (nl) — OGPlayer</title>
+<link rel="stylesheet" href="./assets/demo.css">
+</head>
+<body>
+<div class="wrap">
+  <og-player id="pl"></og-player>
+  <div class="chips" id="chips"></div>
+  <p class="note" id="note"></p>
+  <div class="log" id="log"></div>
+  <footer class="demo" id="foot"></footer>
+</div>
+<script type="importmap">{ "imports": { "ogplayer": "./node_modules/ogplayer/dist/ogplayer.js" } }</script>
+<script type="module">
+import { OGPlayer } from "ogplayer";
+import { pageHeader, makeLog, attachEventLogging, TOS, FOOTER } from "./assets/demo.js";
+
+pageHeader("Localised chrome (nl)", "One strings map puts every word of the chrome in your language — the same keys on every OGPlayer platform.");
+document.getElementById("foot").textContent = FOOTER;
+
+// Every text the player shows or reads to screen readers, in Dutch. The map
+// lives in the app; the SDK ships English and never guesses a language from
+// the browser. The keys are the same on every OGPlayer platform, so this one
+// map localises them all.
+const DUTCH = {
+  play: "Afspelen",
+  pause: "Pauzeren",
+  replay: "Opnieuw afspelen",
+  seekForward: "{seconds} seconden vooruit",
+  seekBackward: "{seconds} seconden terug",
+  next: "Volgende",
+  previous: "Vorige",
+  volume: "Volume",
+  mute: "Dempen",
+  unmute: "Dempen opheffen",
+  enterFullscreen: "Volledig scherm",
+  exitFullscreen: "Volledig scherm sluiten",
+  seekBar: "Afspeelpositie",
+  customAction: "Actie {n}",
+  subtitles: "Ondertiteling",
+  subtitlesOff: "Uit",
+  audio: "Audio",
+  playbackSpeed: "Afspeelsnelheid",
+  speedNormal: "Normaal",
+  speedValue: "{speed}×",
+  quality: "Videokwaliteit",
+  qualityAuto: "Automatisch",
+  qualityHeight: "{height}p",
+  qualityBitrate: "{kbps} kbps",
+  qualityAdaptive: "adaptief",
+  audioDefault: "Standaard",
+  trackUnknown: "Onbekend",
+  audioFallback: "Audio {n}",
+  subtitlesFallback: "Ondertiteling {n}",
+  audioChannels: "{name} · {channels} kanalen",
+  live: "LIVE",
+  goLive: "Naar live",
+  upNext: "Volgende over {seconds}",
+  playNext: "Volgende afspelen: {title}",
+  nextVideo: "volgende video",
+  ad: "RECLAME",
+  adPod: "{index} van {count}",
+  learnMore: "Meer informatie",
+  skipAd: "Advertentie overslaan",
+  skipIn: "Overslaan over {seconds}",
+  pauseAd: "Advertentie pauzeren",
+  resumeAd: "Advertentie hervatten",
+  adBlockedTitle: "Advertenties worden geblokkeerd",
+  adBlockedText: "Deze video wordt aangeboden met advertenties, maar je adblocker houdt ze tegen.",
+  adBlockedTextHard: "Deze video is alleen beschikbaar met advertenties. Schakel je adblocker uit en laad de pagina opnieuw.",
+  adBlockedDismiss: "Begrepen",
+  adBlockedReload: "Uitgeschakeld — opnieuw laden",
+  dismiss: "Sluiten",
+  errorGeneric: "Afspeelfout {code}",
+  retry: "Opnieuw proberen",
+  downloading: "Downloaden",
+  downloadingItemsOne: "1 item downloaden",
+  downloadingItems: "{count} items downloaden",
+  cast: "Casten",
+  castConnecting: "Verbinden met cast-apparaat",
+  casting: "Bezig met casten",
+  castConnectingStatus: "Verbinden…",
+  castingTo: "Casten naar {device}",
+  airPlay: "AirPlay",
+  airPlayTo: "AirPlay — {device}",
+  pipPlaying: "Speelt af in beeld-in-beeld",
+  sponsored: "Gesponsord",
+};
+
+const player = new OGPlayer();
+const el = document.getElementById("pl");
+el.player = player;
+const log = makeLog(document.getElementById("log"));
+attachEventLogging(player, log);
+
+const LIVE_URL = "https://demo.unified-streaming.com/k8s/live/stable/live.isml/.m3u8";
+// A URL that never loads — the errors demo's pattern, for the overlay copy.
+const MISSING = "https://media.ogplayer.tv/tos/does-not-exist.m3u8";
+const note = document.getElementById("note");
+
+const scenarios = {
+  // Tears of Steel: five subtitle languages and three audio tracks in one
+  // manifest — every menu has rows to show. Starts paused with the poster.
+  "On demand": () => {
+    el.config = { strings: DUTCH, locale: "nl" };
+    note.innerHTML = "One Dutch strings map relabels the whole chrome: open the subtitle, audio, speed and " +
+      "quality menus, and screen readers read the Dutch names of every control. " +
+      "<code>config = { strings: map, locale: \"nl\" }</code> — the same keys on every OGPlayer platform; " +
+      "<code>locale</code> names tracks that only carry a language code.";
+    log("— loading VOD (paused, poster) —");
+    player.load(
+      { url: TOS, title: "Tears of Steel", posterUrl: "https://media.ogplayer.tv/posters/tos-mech.jpg" },
+      { autoplay: false },
+    );
+  },
+  // The live stream carries no subtitles and one audio language.
+  "Live DVR": () => {
+    el.config = { strings: DUTCH, locale: "nl", showSubtitleButton: false, showAudioTrackButton: false };
+    note.innerHTML = "Live with a seekable window: the LIVE chip and the behind-live readout; " +
+      "the chip's action is read as \"Naar live\".";
+    log("— loading live DVR —");
+    player.load({ url: LIVE_URL, title: "Live", streamType: "LIVE_DVR" });
+  },
+  // Nothing plays: no timeline, rate or tracks to act on.
+  "Error overlay": () => {
+    el.config = {
+      strings: DUTCH, locale: "nl",
+      showSeekButtons: false, showProgressBar: false, showTimeLabels: false,
+      showSpeedButton: false, showQualityButton: false, showAudioTrackButton: false,
+      showSubtitleButton: false,
+    };
+    note.innerHTML = "A stream that never loads: the overlay shows <code>errorGeneric</code> " +
+      "(\"Afspeelfout {code}\") and the Retry button reads \"Opnieuw proberen\". " +
+      "<code>errorMessageProvider</code> and <code>retryButtonLabel</code> still win when set.";
+    log("— loading a missing stream (will fail) —");
+    player.load({ url: MISSING, title: "Tears of Steel" });
+  },
+};
+const chips = document.getElementById("chips");
+Object.entries(scenarios).forEach(([label, run], i) => {
+  const b = document.createElement("button");
+  b.className = "chip" + (i === 0 ? " on" : "");
+  b.textContent = label;
+  b.addEventListener("click", () => {
+    [...chips.children].forEach((c) => c.classList.remove("on"));
+    b.classList.add("on");
+    run();
+  });
+  chips.appendChild(b);
+});
+scenarios["On demand"]();
+</script>
+</body>
+</html>

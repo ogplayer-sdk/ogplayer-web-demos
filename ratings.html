@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Content ratings — OGPlayer</title>
+<link rel="stylesheet" href="./assets/demo.css">
+</head>
+<body>
+<div class="wrap">
+  <og-player id="pl"></og-player>
+  <div class="chips" id="ages"></div>
+  <div class="chips" id="descs"></div>
+  <p class="note">Rating icons appear top-right at content start and fade after five
+  seconds — the Kijkwijzer convention. Age is single-select, descriptors multi-select,
+  and "Custom icon" shows a host-supplied image (licensed official pictograms go here).
+  No SDK cap on the count — Kijkwijzer itself uses one age plus up to six descriptors.
+  Changing the selection reloads to re-trigger the row.</p>
+  <div class="log" id="log"></div>
+  <footer class="demo" id="foot"></footer>
+</div><script type="importmap">{ "imports": { "ogplayer": "./node_modules/ogplayer/dist/ogplayer.js" } }</script>
+<script type="module">
+import { OGPlayer, ImaAdsProvider } from "ogplayer";
+import { pageHeader, makeLog, attachEventLogging, TOS, FOOTER } from "./assets/demo.js";
+
+pageHeader("Content ratings", "Kijkwijzer-style age + descriptor icons at program start (NICAM).");
+document.getElementById("foot").textContent = FOOTER;
+
+const player = new OGPlayer();
+const el = document.getElementById("pl");
+el.player = player;
+const log = makeLog(document.getElementById("log"));
+attachEventLogging(player, log);
+
+let age = "SIXTEEN";
+const descs = new Set(["FEAR"]);
+let custom = false;
+let withPreroll = false;
+// Proof pattern (mobile parity): with a preroll, the icons must NOT show
+// over the ad — they appear when CONTENT starts after the break.
+const PREROLL_TAG = "https://pubads.g.doubleclick.net/gampad/ads?iu=/21775744923/external/"
+  + "single_preroll_skippable&sz=640x480&ciu_szs=300x250%2C728x90&gdfp_req=1"
+  + "&output=vast&unviewed_position_start=1&env=vp&impl=s&correlator=";
+// Host-supplied icon (e.g. the officially licensed Kijkwijzer artwork) —
+// any image URL; here a self-contained data-URI badge.
+const CUSTOM_ICON = "data:image/svg+xml," + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 28 28"><circle cx="14" cy="14" r="13" fill="#1B6EF3"/><text x="14" y="19" font-family="Arial" font-size="12" font-weight="bold" fill="#fff" text-anchor="middle">NL</text></svg>');
+const AGES = ["ALL","SIX","NINE","TWELVE","FOURTEEN","SIXTEEN","EIGHTEEN"];
+const DESCS = ["VIOLENCE","FEAR","SEX","DISCRIMINATION","DRUGS_ALCOHOL","COARSE_LANGUAGE"];
+const AGE_LABEL = { ALL:"AL", SIX:"6", NINE:"9", TWELVE:"12", FOURTEEN:"14", SIXTEEN:"16", EIGHTEEN:"18" };
+
+function reload() {
+  log(withPreroll ? "— reloading with ratings + preroll —" : "— reloading with ratings —");
+  player.adsProvider = withPreroll ? new ImaAdsProvider() : null;
+  player.isMuted = withPreroll; // gestureless autoplay for the ad
+  player.load({
+    url: TOS, title: "Ratings demo",
+    contentRatings: [
+      { age },
+      ...[...descs].map((d) => ({ descriptor: d })),
+      ...(custom ? [{ customIconUrl: CUSTOM_ICON }] : []),
+    ],
+    ...(withPreroll ? { adBreaks: { adTagUri: PREROLL_TAG } } : {}),
+  });
+}
+const ageHost = document.getElementById("ages");
+AGES.forEach((a) => {
+  const b = document.createElement("button");
+  b.className = "chip" + (a === age ? " on" : "");
+  b.textContent = AGE_LABEL[a];
+  b.addEventListener("click", () => {
+    age = a;
+    [...ageHost.children].forEach((c) => c.classList.remove("on"));
+    b.classList.add("on");
+    reload();
+  });
+  ageHost.appendChild(b);
+});
+const dHost = document.getElementById("descs");
+const customBtn = document.createElement("button");
+customBtn.className = "chip";
+customBtn.textContent = "Custom icon";
+customBtn.addEventListener("click", () => {
+  custom = !custom;
+  customBtn.classList.toggle("on", custom);
+  reload();
+});
+DESCS.forEach((d) => {
+  const b = document.createElement("button");
+  b.className = "chip" + (descs.has(d) ? " on" : "");
+  b.textContent = d.toLowerCase().replace("_", "/");
+  b.addEventListener("click", () => {
+    descs.has(d) ? descs.delete(d) : descs.add(d);
+    b.classList.toggle("on");
+    reload();
+  });
+  dHost.appendChild(b);
+});
+dHost.appendChild(customBtn);
+const prerollBtn = document.createElement("button");
+prerollBtn.className = "chip";
+prerollBtn.textContent = "With preroll";
+prerollBtn.addEventListener("click", () => {
+  withPreroll = !withPreroll;
+  prerollBtn.classList.toggle("on", withPreroll);
+  reload();
+});
+dHost.appendChild(prerollBtn);
+reload();
+</script>
+</body>
+</html>

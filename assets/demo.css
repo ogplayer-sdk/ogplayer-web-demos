@@ -1,0 +1,46 @@
+/* Shared demo chrome — the web twin of the mobile demo apps' Ink palette. */
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#0E0E10; color:#fff;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; }
+.wrap { max-width:900px; margin:0 auto; padding:20px 16px 40px; }
+header.demo { display:flex; align-items:center; gap:10px; margin-bottom:16px; }
+header.demo .brand { font-size:22px; font-weight:700; }
+header.demo .brand .og { color:#F6C445; }
+header.demo .back { color:rgba(255,255,255,.6); text-decoration:none; font-size:14px;
+  margin-right:2px; padding:6px 10px 6px 0; }
+header.demo .back:hover { color:#F6C445; }
+header.demo .sub { color:rgba(255,255,255,.48); font-size:12px; margin-left:auto; }
+h1.page { font-size:26px; font-weight:600; margin:2px 0 4px; }
+p.lede { color:rgba(255,255,255,.48); font-size:12.5px; margin-bottom:16px; }
+og-player { width:100%; aspect-ratio:16/9; border-radius:10px; }
+.chips { display:flex; gap:8px; flex-wrap:wrap; margin:14px 0 8px; }
+.chip { background:rgba(255,255,255,.045); border:1px solid rgba(255,255,255,.07);
+  color:#fff; font-size:13px; border-radius:999px; padding:8px 14px; cursor:pointer; }
+.chip.on { background:#F6C445; color:#000; font-weight:600; border-color:transparent; }
+.note { color:rgba(255,255,255,.48); font-size:12.5px; line-height:1.5; margin:6px 0 12px; }
+.log { background:#101312; border:1px solid rgba(255,255,255,.07); border-radius:10px;
+  height:240px; overflow:auto; padding:10px 12px;
+  font:11.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;
+  color:#7ee787; white-space:pre-wrap; }
+footer.demo { margin-top:18px; color:rgba(255,255,255,.32); font-size:11.5px; }
+/* Launcher */
+.group { color:rgba(255,255,255,.38); font-size:11px; font-weight:700;
+  letter-spacing:1.4px; margin:20px 0 8px; }
+a.row { display:flex; align-items:center; gap:14px; padding:14px 12px; margin-bottom:7px;
+  background:rgba(255,255,255,.045); border:1px solid rgba(255,255,255,.07);
+  border-radius:8px; text-decoration:none; color:inherit; }
+a.row:hover { background:rgba(255,255,255,.075); }
+a.row.off { opacity:.45; pointer-events:none; }
+.tile { width:34px; height:34px; border-radius:7px; background:rgba(246,196,69,.12);
+  display:flex; align-items:center; justify-content:center; color:#F6C445; flex:none; }
+.tile svg { width:18px; height:18px; }
+.rt { flex:1; min-width:0; }
+.rt .t { font-size:16px; font-weight:600; display:flex; align-items:center; gap:6px; }
+.rt .d { font-size:13px; color:rgba(255,255,255,.48); margin-top:3px; }
+.tag { font-size:10px; font-weight:500; color:rgba(255,255,255,.48);
+  background:rgba(255,255,255,.09); border-radius:4px; padding:2.5px 6px; }
+.chev { color:rgba(255,255,255,.30); font-size:18px; }
+label.cb { display:inline-flex; align-items:center; gap:8px; cursor:pointer;
+  font-size:15px; margin-right:24px; margin-bottom:10px; }
+label.cb input { width:22px; height:22px; accent-color:#F6C445; }
+label.cb svg { width:24px; height:24px; color:#fff; }

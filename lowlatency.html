@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Low-latency live — OGPlayer</title>
+<link rel="stylesheet" href="./assets/demo.css">
+<style>
+  .readout { font: 600 17px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; margin: 12px 0 2px; }
+  .readout + .readout { font-weight: 400; font-size: 13px; opacity: .6; margin-top: 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <og-player id="pl"></og-player>
+  <p class="readout" id="offset">Behind real time: —</p>
+  <div class="chips" id="chips"></div>
+  <p class="note" id="note"></p>
+  <div class="log" id="log"></div>
+  <footer class="demo" id="foot"></footer>
+</div>
+<script type="importmap">{ "imports": { "ogplayer": "./node_modules/ogplayer/dist/ogplayer.js" } }</script>
+<script type="module">
+import { OGPlayer } from "ogplayer";
+import { pageHeader, makeLog, attachEventLogging } from "./assets/demo.js";
+
+pageHeader("Low-latency live", "LL-HLS parts: a few seconds behind real time, the same live chrome.");
+document.getElementById("foot").textContent =
+  "Content: Big Buck Bunny — (CC) Blender Foundation, via Mux's public low-latency test stream · OGPlayer is a product of Inverse DOO";
+
+// Public LL-HLS test stream: ~1 s fMP4 parts (EXT-X-PART), blocking playlist
+// reload and a PART-HOLD-BACK in EXT-X-SERVER-CONTROL, with a UTC clock
+// burned into the picture.
+const LL_URL = "https://stream.mux.com/v69RSHhFelSm4701snP22dYz2jICy4E4FUyk02rW4gxRM.m3u8";
+
+const player = new OGPlayer();
+const el = document.getElementById("pl");
+el.player = player;
+// One audio rendition and no subtitles: the buttons that would open an empty
+// menu are hidden; the quality ladder stays.
+el.config = { showSubtitleButton: false, showAudioTrackButton: false };
+const log = makeLog(document.getElementById("log"));
+attachEventLogging(player, log);
+
+document.getElementById("note").textContent =
+  "Nothing to configure — the same item as any live stream. The engine holds the playlist's " +
+  "PART-HOLD-BACK and plays a few seconds behind real time; part of that delay is the stream's " +
+  "own, before it reaches the player. This test stream keeps only about 20 s of history, so it " +
+  "plays as plain live: no rewind bar. Pause, and “To live edge” (seekToLiveEdge()) brings the " +
+  "delay back down. The clock painted into the picture comes from the stream's encoder and can " +
+  "differ from the stream's time stamps by a second or two.";
+
+const chips = document.getElementById("chips");
+const toEdge = document.createElement("button");
+toEdge.className = "chip";
+toEdge.textContent = "To live edge";
+toEdge.addEventListener("click", () => {
+  log("— seekToLiveEdge() —");
+  player.seekToLiveEdge();
+});
+chips.appendChild(toEdge);
+
+// Twice a second: how far the playhead's program date-time runs behind this
+// device's clock — one number, the delay a viewer actually experiences.
+setInterval(() => {
+  const wall = player.liveInfo?.playheadWallClockMs ?? null;
+  document.getElementById("offset").textContent =
+    "Behind real time: " + (wall !== null ? `${(Math.max(0, Date.now() - wall) / 1000).toFixed(1)} s` : "—");
+}, 500);
+
+// Plain LIVE: a ~20 s window is no DVR — the chrome shows the LIVE chip and no
+// rewind bar (Ognjen, 2026-09-30: the bar over 20 s "is kind of strange").
+log("— loading LIVE low-latency HLS —");
+player.load({ url: LL_URL, title: "Low-latency live", streamType: "LIVE" });
+</script>
+</body>
+</html>

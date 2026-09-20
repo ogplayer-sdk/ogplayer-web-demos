@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nothing here — OGPlayer demos</title>
+<style>
+  :root { --ground: #0E0E10; --accent: #F6C445; --fg: rgba(255,255,255,0.86); --dim: rgba(255,255,255,0.55); }
+  * { box-sizing: border-box; margin: 0; }
+  body { min-height: 100svh; display: grid; place-items: center; background: var(--ground); color: var(--fg);
+    font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 32px; }
+  main { text-align: center; max-width: 30rem; }
+  .bot { width: 168px; margin: 0 auto 26px; display: block; }
+  @keyframes shrug { 0%, 100% { transform: translateY(0) } 50% { transform: translateY(-7px) } }
+  .arms, .shoulders { animation: shrug 2.6s ease-in-out infinite; transform-origin: center; }
+  @media (prefers-reduced-motion: reduce) { .arms, .shoulders { animation: none } }
+  h1 { font-size: 1.7rem; letter-spacing: -0.01em; margin-bottom: 10px; }
+  p { color: var(--dim); margin-bottom: 28px; }
+  .row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  a.btn { display: inline-block; padding: 11px 22px; border-radius: 999px; text-decoration: none; font-weight: 600; }
+  a.primary { background: var(--accent); color: #131313; }
+  a.ghost { color: var(--fg); border: 1px solid rgba(255,255,255,0.22); }
+  a.ghost:hover { border-color: rgba(246,196,69,0.55); color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <svg class="bot" viewBox="0 0 200 170" fill="none" aria-hidden="true">
+    <!-- antenna -->
+    <line x1="100" y1="28" x2="100" y2="14" stroke="rgba(255,255,255,0.45)" stroke-width="3"/>
+    <circle cx="100" cy="10" r="5" fill="#F6C445"/>
+    <!-- head -->
+    <rect x="64" y="28" width="72" height="52" rx="14" stroke="rgba(255,255,255,0.72)" stroke-width="3.5"/>
+    <!-- eyes: one flat, one round = ¯\_(ツ)_/¯ energy -->
+    <circle cx="86" cy="52" r="5" fill="#F6C445"/>
+    <path d="M107 52 h14" stroke="#F6C445" stroke-width="4" stroke-linecap="round"/>
+    <!-- mouth -->
+    <path d="M88 66 q12 6 24 0" stroke="rgba(255,255,255,0.55)" stroke-width="3" stroke-linecap="round"/>
+    <!-- body -->
+    <rect x="72" y="92" width="56" height="46" rx="12" stroke="rgba(255,255,255,0.72)" stroke-width="3.5"/>
+    <path d="M92 110 L108 110 M92 122 L108 122" stroke="rgba(255,255,255,0.3)" stroke-width="3" stroke-linecap="round"/>
+    <!-- shrugging arms + shoulder pads -->
+    <g class="shoulders">
+      <circle cx="62" cy="96" r="8" fill="#0E0E10" stroke="rgba(255,255,255,0.72)" stroke-width="3.5"/>
+      <circle cx="138" cy="96" r="8" fill="#0E0E10" stroke="rgba(255,255,255,0.72)" stroke-width="3.5"/>
+    </g>
+    <g class="arms">
+      <path d="M56 92 Q40 84 34 68" stroke="rgba(255,255,255,0.72)" stroke-width="3.5" stroke-linecap="round"/>
+      <path d="M144 92 Q160 84 166 68" stroke="rgba(255,255,255,0.72)" stroke-width="3.5" stroke-linecap="round"/>
+      <circle cx="32" cy="63" r="6" fill="#F6C445"/>
+      <circle cx="168" cy="63" r="6" fill="#F6C445"/>
+    </g>
+    <!-- legs -->
+    <path d="M86 138 v14 M114 138 v14" stroke="rgba(255,255,255,0.72)" stroke-width="3.5" stroke-linecap="round"/>
+  </svg>
+  <h1>Nothing here.</h1>
+  <p>This page plays absolutely nothing — and we're a video player, so that's saying something.</p>
+  <div class="row">
+    <a class="btn primary" href="/">Back to the demos</a>
+    <a class="btn ghost" href="https://ogplayer.tv">ogplayer.tv</a>
+  </div>
+</main>
+</body>
+</html>

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Watermarks — OGPlayer</title>
+<link rel="stylesheet" href="./assets/demo.css">
+<style>
+  .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:14px; }
+  .slotbtn { background:rgba(255,255,255,.045); border:1px solid rgba(255,255,255,.07);
+    color:#fff; font-size:13px; border-radius:8px; padding:12px 6px; cursor:pointer; }
+  .slotbtn.on { background:#F6C445; color:#000; font-weight:600; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <og-player id="pl"></og-player>
+  <div class="grid" id="grid"></div>
+  <p class="note">Tap any slot to place a watermark there — all nine positions. The SDK
+  keeps them clear of the controls (top slots drop below the top line, bottom slots
+  lift above the bar).</p>
+  <footer class="demo" id="foot"></footer>
+</div><script type="importmap">{ "imports": { "ogplayer": "./node_modules/ogplayer/dist/ogplayer.js" } }</script>
+<script type="module">
+import { OGPlayer } from "ogplayer";
+import { pageHeader, FOOTER, TOS } from "./assets/demo.js";
+
+pageHeader("Watermarks", "Nine overlay slots via named <slot> elements — the OverlaySlot system on the web.");
+document.getElementById("foot").textContent = FOOTER;
+
+const player = new OGPlayer();
+const el = document.getElementById("pl");
+el.player = player;
+player.load({ url: TOS, title: "Watermark demo" });
+
+const slots = [
+  ["top-start","Top-left"],["top-center","Top-center"],["top-end","Top-right"],
+  ["center-start","Left"],["center","Center"],["center-end","Right"],
+  ["bottom-start","Bottom-left"],["bottom-center","Bottom-center"],["bottom-end","Bottom-right"],
+];
+const grid = document.getElementById("grid");
+slots.forEach(([slot, label], i) => {
+  const b = document.createElement("button");
+  b.className = "slotbtn" + (slot === "top-end" ? " on" : "");
+  b.textContent = label;
+  b.addEventListener("click", () => {
+    b.classList.toggle("on");
+    const existing = el.querySelector(`[slot="${slot}"]`);
+    if (existing) { existing.remove(); return; }
+    const s = document.createElement("span");
+    s.slot = slot;
+    s.textContent = `WATERMARK ${i + 1}`;
+    s.style.cssText = "background:rgba(0,0,0,.5);color:#fff;font-size:14px;font-weight:600;padding:5px 10px";
+    el.appendChild(s);
+  });
+  grid.appendChild(b);
+});
+// Default: top-right on.
+const s = document.createElement("span");
+s.slot = "top-end"; s.textContent = "WATERMARK 3";
+s.style.cssText = "background:rgba(0,0,0,.5);color:#fff;font-size:14px;font-weight:600;padding:5px 10px";
+el.appendChild(s);
+</script>
+</body>
+</html>

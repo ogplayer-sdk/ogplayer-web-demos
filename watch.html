@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Watch — OGPlayer</title>
+<style>
+  /* Full-window watch page: the PLAYER IS THE PAGE — og-player just fills
+     the viewport; no SDK feature needed, only host CSS. The chrome's
+     fullscreen button still offers real OS fullscreen on top. */
+  * { margin:0; padding:0; }
+  html, body { height:100%; background:#000; overflow:hidden; }
+  og-player { position:fixed; inset:0; width:100vw; height:100vh; }
+  .back { position:fixed; top:18px; left:18px; z-index:10; display:flex;
+    align-items:center; gap:8px; color:#fff; text-decoration:none;
+    font:600 15px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    background:rgba(0,0,0,.45); border-radius:999px; padding:9px 16px 9px 12px;
+    opacity:.85; transition:opacity .2s; }
+  .back:hover { opacity:1; }
+</style>
+</head>
+<body>
+<og-player id="pl"></og-player>
+<a class="back" href="./index.html">‹ Demos</a><script type="importmap">{ "imports": { "ogplayer": "./node_modules/ogplayer/dist/ogplayer.js" } }</script>
+<script type="module">
+import { OGPlayer } from "ogplayer";
+
+const player = new OGPlayer();
+document.getElementById("pl").player = player;
+player.load({
+  url: "https://media.ogplayer.tv/tos/master.m3u8",
+  title: "Tears of Steel",
+});
+
+// Streaming-service autoplay pattern: sound-on autoplay is often blocked
+// without a fresh gesture, so fall back to MUTED autoplay (always allowed)
+// — the viewer unmutes from the volume control.
+setTimeout(() => {
+  if (!player.isPlaying) {
+    player.isMuted = true;
+    player.play();
+  }
+}, 700);
+</script>
+</body>
+</html>
