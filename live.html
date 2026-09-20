@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Live & DVR — OGPlayer</title>
+<link rel="stylesheet" href="./assets/demo.css">
+</head>
+<body>
+<div class="wrap">
+  <og-player id="pl"></og-player>
+  <div class="chips" id="chips"></div>
+  <p class="note" id="note"></p>
+  <div class="log" id="log"></div>
+  <footer class="demo" id="foot"></footer>
+</div>
+<script type="importmap">{ "imports": { "ogplayer": "./node_modules/ogplayer/dist/ogplayer.js" } }</script>
+<script type="module">
+import { OGPlayer } from "ogplayer";
+import { pageHeader, makeLog, attachEventLogging } from "./assets/demo.js";
+
+pageHeader("Live & DVR", "Live edge, seekable window, behind-edge state — LiveInfo on the web.");
+document.getElementById("foot").textContent =
+  "Content: Unified Streaming's public live test pattern (UTC clock burned in) · OGPlayer is operated by Inverse DOO";
+
+const player = new OGPlayer();
+const el = document.getElementById("pl");
+el.player = player;
+// One audio language, no subtitles, a 4-variant ladder: buttons that would
+// open an empty menu are hidden, quality stays.
+el.config = { showSubtitleButton: false, showAudioTrackButton: false };
+const log = makeLog(document.getElementById("log"));
+attachEventLogging(player, log);
+
+const LIVE_URL = "https://demo.unified-streaming.com/k8s/live/stable/live.isml/.m3u8";
+// The primary feed is a third party's; if it is unreachable the page falls
+// back once to Mux's public low-latency stream (the low-latency page's feed),
+// and the footer credit follows it.
+const FALLBACK_URL = "https://stream.mux.com/v69RSHhFelSm4701snP22dYz2jICy4E4FUyk02rW4gxRM.m3u8";
+const FALLBACK_FOOTER = "Content: Big Buck Bunny — (CC) Blender Foundation, via Mux's public low-latency test stream · OGPlayer is operated by Inverse DOO";
+let sourceUrl = LIVE_URL;
+let modeType = "LIVE_DVR";
+const TRACKS_NOTE = "One audio language and no subtitles: the subtitle and audio buttons are hidden (showSubtitleButton / showAudioTrackButton = false).";
+const modes = {
+  "Live with DVR window": ["LIVE_DVR",
+    "Seekable live: scrub back into the DVR window — the LIVE chip dims behind the edge; tap it to snap back. Speed is hidden (live). " + TRACKS_NOTE],
+  "Pure live (no DVR)": ["LIVE",
+    "Not seekable: the scrub bar, ±10s buttons, time labels and speed disappear — only the LIVE chip and live-safe controls remain. " + TRACKS_NOTE],
+};
+const chips = document.getElementById("chips");
+Object.entries(modes).forEach(([label, [type, note]], i) => {
+  const b = document.createElement("button");
+  b.className = "chip" + (i === 0 ? " on" : "");
+  b.textContent = label;
+  b.addEventListener("click", () => {
+    [...chips.children].forEach((c) => c.classList.remove("on"));
+    b.classList.add("on");
+    document.getElementById("note").textContent = note;
+    log(`— loading ${label} —`);
+    modeType = type;
+    player.load({ url: sourceUrl, title: "Live & DVR demo", streamType: type });
+  });
+  chips.appendChild(b);
+});
+// The imperative twin of clicking the LIVE chip in the chrome — hosts can
+// jump back programmatically (player.seekToLiveEdge()).
+const toEdge = document.createElement("button");
+toEdge.className = "chip";
+toEdge.textContent = "To live edge";
+toEdge.addEventListener("click", () => {
+  log("— seekToLiveEdge() —");
+  player.seekToLiveEdge();
+});
+chips.appendChild(toEdge);
+document.getElementById("note").textContent = modes["Live with DVR window"][1];
+player.addListener({
+  onError(e) {
+    // Network failure on the primary only, and only once: an error on the
+    // fallback (or any other category) keeps the player's own error UI.
+    if (e.category !== "Network" || sourceUrl !== LIVE_URL) return;
+    sourceUrl = FALLBACK_URL;
+    log(`— primary live feed unreachable (${e.codeName}), switching to the fallback stream —`);
+    document.getElementById("foot").textContent = FALLBACK_FOOTER;
+    const note = document.getElementById("note");
+    note.textContent = "Primary live feed unreachable — playing the fallback stream (plain live, about a 20 s window). " + note.textContent;
+    // A tick later: the player ends the failed session after its listeners
+    // return, and a load from inside the callback would be stopped with it.
+    setTimeout(() => player.load({ url: sourceUrl, title: "Live & DVR demo", streamType: modeType }), 0);
+  },
+});
+log("— loading Live with DVR window —");
+player.load({ url: sourceUrl, title: "Live & DVR demo", streamType: modeType });
+</script>
+</body>
+</html>

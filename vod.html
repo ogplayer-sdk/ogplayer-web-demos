@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VOD playback — OGPlayer</title>
+<link rel="stylesheet" href="./assets/demo.css">
+</head>
+<body>
+<div class="wrap">
+  <og-player id="pl"></og-player>
+  <div class="group" style="margin:14px 0 0">HLS</div>
+  <div class="chips" id="chips" style="margin-top:8px"></div>
+  <div class="group" style="margin:10px 0 0">DASH</div>
+  <div class="chips" id="dashChips" style="margin-top:8px"></div>
+  <p class="note">Adaptive VOD. Tap the player for the chrome: scrub with cue-accurate
+  seeking, ±10s transport, quality / speed / audio / CC menus, fullscreen. Double-click
+  the left or right half to seek. "Scrub preview" adds a storyboard track
+  (<code>thumbnailTrackUrl</code>) — hover or drag the scrubber for trick-play
+  thumbnails. DASH is the same film as MPEG-DASH: pass an <code>.mpd</code> URL (or
+  <code>mimeType: "application/dash+xml"</code>) and the SDK plays it on its DASH engine,
+  fetched the first time a DASH item loads — same chrome, menus and callbacks. All
+  callbacks stream below.</p>
+  <div class="log" id="log"></div>
+  <footer class="demo" id="foot"></footer>
+</div><script type="importmap">{ "imports": { "ogplayer": "./node_modules/ogplayer/dist/ogplayer.js" } }</script>
+<script type="module">
+import { OGPlayer } from "ogplayer";
+import { pageHeader, makeLog, attachEventLogging, TOS, FOOTER } from "./assets/demo.js";
+
+pageHeader("VOD playback", "Adaptive HLS and MPEG-DASH with the full player chrome — transport, precise seeking, quality and track menus, fullscreen.");
+document.getElementById("foot").textContent = FOOTER;
+
+const player = new OGPlayer();
+const el = document.getElementById("pl");
+el.player = player;
+const log = makeLog(document.getElementById("log"));
+attachEventLogging(player, log);
+// Storyboard demo asset (VOD chip stays on Tears of Steel; the storyboard
+// chip uses a stream that ships a trick-play track).
+const SB_URL = "https://media.ogplayer.tv/tos/master.m3u8";
+const SB_VTT = "https://media.ogplayer.tv/tos/storyboard/storyboard.vtt";
+// Tears of Steel as on-demand DASH (a public test asset): one audio track, no
+// subtitles — the buttons that would open an empty menu are hidden for it.
+const TOS_DASH = "https://storage.googleapis.com/wvmedia/clear/h264/tears/tears.mpd";
+const DASH_CONFIG = { showSubtitleButton: false, showAudioTrackButton: false };
+const scenarios = {
+  // Starts PAUSED with a poster — press play yourself (the other demos
+  // autoplay; this one shows the pre-play poster experience).
+  "Tears of Steel": () => {
+    log("— loading VOD (paused, poster) —");
+    player.load(
+      { url: TOS, title: "Tears of Steel", posterUrl: "https://media.ogplayer.tv/posters/tos-mech.jpg" },
+      { autoplay: false },
+    );
+  },
+  "Scrub preview (storyboard)": () => {
+    log("— loading VOD with storyboard thumbnails —");
+    player.load({ url: SB_URL, title: "Storyboard demo", thumbnailTrackUrl: SB_VTT });
+  },
+};
+const dashScenarios = {
+  "Tears of Steel": () => {
+    log("— loading DASH VOD —");
+    player.load({ url: TOS_DASH, title: "Tears of Steel (DASH)", posterUrl: "https://media.ogplayer.tv/posters/tos-mech.jpg" });
+  },
+};
+// One selection across both groups; the chrome config follows the group.
+let dashConfigOn = false;
+function addChips(row, entries, dash) {
+  Object.entries(entries).forEach(([label, run], i) => {
+    const b = document.createElement("button");
+    b.className = "chip" + (!dash && i === 0 ? " on" : "");
+    b.textContent = label;
+    b.addEventListener("click", () => {
+      document.querySelectorAll(".chip").forEach((c) => c.classList.remove("on"));
+      b.classList.add("on");
+      if (dash !== dashConfigOn) { el.config = dash ? DASH_CONFIG : {}; dashConfigOn = dash; }
+      run();
+    });
+    row.appendChild(b);
+  });
+}
+addChips(document.getElementById("chips"), scenarios, false);
+addChips(document.getElementById("dashChips"), dashScenarios, true);
+scenarios["Tears of Steel"]();
+</script>
+</body>
+</html>

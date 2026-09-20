@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Picture-in-picture — OGPlayer</title>
+<link rel="stylesheet" href="./assets/demo.css">
+</head>
+<body>
+<div class="wrap">
+  <og-player id="pl"></og-player>
+  <p class="note">There is no picture-in-picture button, in the chrome or on this page: PiP is the
+  developer's decision. This player is created with <code>autoEnterPip: true</code>, so the browser
+  may take the video into PiP on its own where it offers that — Safari when you switch tabs or apps,
+  Chrome on a tab switch for sites it allows auto picture-in-picture (the media-session
+  <code>enterpictureinpicture</code> action the SDK registers). The browser's own PiP controls work
+  too, and your code enters it with <code>await player.enterPip()</code> from a click or key handler
+  of your own UI (browsers grant PiP to a user gesture); <code>player.exitPip()</code> leaves it.
+  During an ad break PiP is not offered. Every transition fires <code>og-pipchanged</code>
+  (<code>detail.isActive</code>) and the <code>PictureInPictureChanged</code> analytics event —
+  both stream below, with the tab's visibility changes.</p>
+  <div class="log" id="log"></div>
+  <footer class="demo" id="foot"></footer>
+</div>
+<script type="importmap">{ "imports": { "ogplayer": "./node_modules/ogplayer/dist/ogplayer.js" } }</script>
+<script type="module">
+import { OGPlayer } from "ogplayer";
+import { pageHeader, makeLog, attachEventLogging, TOS, FOOTER } from "./assets/demo.js";
+
+pageHeader("Picture-in-picture", "Auto-enter where the browser offers it, your code's enterPip() everywhere else — no PiP button.");
+document.getElementById("foot").textContent = FOOTER;
+
+// autoEnterPip is explicit (default false): it arms the browser's own
+// auto-enter and nothing else — the SDK never simulates a tab switch.
+const player = new OGPlayer({ autoEnterPip: true });
+const el = document.getElementById("pl");
+el.player = player;
+const log = makeLog(document.getElementById("log"));
+attachEventLogging(player, log);
+
+// The element's event for every PiP transition — enterPip()/exitPip(), the
+// browser's auto-enter, or the viewer closing the PiP window.
+el.addEventListener("og-pipchanged", (e) => log(`og-pipchanged: isActive=${e.detail.isActive}`));
+// Where auto-enter happens it follows the tab leaving the screen.
+document.addEventListener("visibilitychange", () => log(`page ${document.visibilityState}`));
+
+log("— loading VOD (autoplay) —");
+player.load({ url: TOS, title: "Tears of Steel" });
+</script>
+</body>
+</html>
